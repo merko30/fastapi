@@ -46,3 +46,8 @@ class LoginData(BaseModel):
 class PostCreate(BaseModel):
     title: constr(min_length=5, max_length=100)
     content: constr(min_length=150)
+
+
+class PostUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
