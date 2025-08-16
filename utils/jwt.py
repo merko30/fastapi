@@ -11,7 +11,8 @@ def create_access_token(user_id: int):
     now = datetime.now(timezone.utc)
     payload = {
         "sub": str(user_id),
-        "exp": now + timedelta(minutes=15),
+        # TODO: make it shorter later
+        "exp": now + timedelta(days=7),
         "iat": now,
     }
     return jwt.encode(payload, SECRET, algorithm="HS256")

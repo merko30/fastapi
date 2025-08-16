@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
 from models import Post, PostCreate
 from utils.middleware import require_user_id
+from dto import ErrorDTO
 
 router = APIRouter(prefix="/posts")
 
@@ -24,5 +25,19 @@ def get_posts(
     db.add(post)
     db.commit()
     db.refresh(post)
+
+    return post
+
+
+@router.get("/{id}")
+def get_post(id: int, db: Session = Depends(get_db)):
+    post = (
+        db.query(Post).filter(Post.id == id).options(selectinload(Post.author)).first()
+    )
+
+    if not post:
+        raise HTTPException(
+            404, detail=ErrorDTO(code=404, message="Post not found").model_dump()
+        )
 
     return post
