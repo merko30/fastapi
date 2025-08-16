@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from bcrypt import hashpw, gensalt, checkpw
-import jwt
 
 from database import get_db
 from models import User, UserCreate, LoginData
 from dto import ErrorDTO
 from utils.jwt import create_access_token, create_refresh_token
+from utils.middleware import require_user_id
 
 router = APIRouter(prefix="/auth")
 
@@ -58,13 +58,7 @@ def login(data: LoginData, db: Session = Depends(get_db)):
 
 
 @router.get("/me")
-def get_current_user(request: Request, db: Session = Depends(get_db)):
-    user_id = request.state.user_id
-
-    if not user_id:
-        raise HTTPException(
-            401, detail=ErrorDTO(code=401, message="Unauthorized").model_dump()
-        )
+def get_current_user(user_id=Depends(require_user_id), db: Session = Depends(get_db)):
 
     user = db.query(User).filter(User.id == int(user_id)).first()
 
