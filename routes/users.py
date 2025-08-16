@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from bcrypt import hashpw, gensalt
+from bcrypt import hashpw, gensalt, checkpw
+import jwt
 
 from database import get_db
-from models import User, UserCreate
+from models import User, UserCreate, LoginData
 from dto import ErrorDTO
+from utils.jwt import create_access_token, create_refresh_token
 
 router = APIRouter(prefix="/auth")
 
@@ -28,3 +30,28 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     return new_user
+
+
+@router.post("/login")
+def login(data: LoginData, db: Session = Depends(get_db)):
+
+    user = db.query(User).filter(User.email == data.email).first()
+
+    if not user:
+        raise HTTPException(
+            401, detail=ErrorDTO(code=401, message="Invalid credentials").model_dump()
+        )
+
+    password_match = checkpw(
+        data.password.encode("utf-8"), user.password.encode("utf-8")
+    )
+
+    if not password_match:
+        raise HTTPException(
+            401, detail=ErrorDTO(code=401, message="Invalid credentials").model_dump()
+        )
+
+    token = create_access_token(user.id)
+    refresh_token = create_refresh_token(user.id, "abc")
+
+    return {"token": token, "refresh_token": refresh_token}

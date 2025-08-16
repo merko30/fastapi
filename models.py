@@ -36,3 +36,8 @@ class UserCreate(BaseModel):
     password: constr(min_length=6)
     name: Optional[str] = None
     avatar: Optional[str] = None
+
+
+class LoginData(BaseModel):
+    email: EmailStr
+    password: str
