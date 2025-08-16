@@ -41,3 +41,8 @@ class UserCreate(BaseModel):
 class LoginData(BaseModel):
     email: EmailStr
     password: str
+
+
+class PostCreate(BaseModel):
+    title: constr(min_length=5, max_length=100)
+    content: constr(min_length=150)
