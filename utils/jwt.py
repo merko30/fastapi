@@ -1,7 +1,10 @@
+from typing import Any
 from datetime import datetime, timedelta, timezone
+from fastapi import HTTPException
 import jwt
 
 SECRET = "supersecret"
+ALGORITHM = "HS256"
 
 
 def create_access_token(user_id: int):
@@ -23,3 +26,21 @@ def create_refresh_token(user_id: int, jti: str):
         "iat": now,
     }
     return jwt.encode(payload, SECRET, algorithm="HS256")
+
+
+def decode_token(token: str) -> dict[str, Any]:
+    try:
+        payload = jwt.decode(token, SECRET, algorithms=[ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=401,
+            detail="Token expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.JWTError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
