@@ -1,15 +1,16 @@
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
-from models import Post, PostCreate, PostUpdate
+from models import Post, PostCreate, PostUpdate, PostRead
 from utils.middleware import require_user_id
 from dto import ErrorDTO
 
 router = APIRouter(prefix="/posts")
 
 
-@router.get("/")
+@router.get("/", response_model=List[PostRead])
 def get_posts(db: Session = Depends(get_db)):
     return db.query(Post).options(selectinload(Post.author)).all()
 
@@ -31,7 +32,7 @@ def get_posts(
     return post
 
 
-@router.get("/{id}")
+@router.get("/{id}", response_model=PostRead)
 def get_post(id: int, db: Session = Depends(get_db)):
     post = (
         db.query(Post).filter(Post.id == id).options(selectinload(Post.author)).first()
@@ -45,7 +46,7 @@ def get_post(id: int, db: Session = Depends(get_db)):
     return post
 
 
-@router.put("/{id}")
+@router.put("/{id}", response_model=PostRead)
 def update_post(
     id: int,
     post: PostUpdate,

@@ -51,3 +51,24 @@ class PostCreate(BaseModel):
 class PostUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
+
+
+class UserRead(BaseModel):
+    id: int
+    username: str
+    email: str
+    name: Optional[str] = None
+    avatar: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+
+class PostRead(BaseModel):
+    id: int
+    title: str
+    content: str
+    author: UserRead
+
+    class Config:
+        orm_mode = True
