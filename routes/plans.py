@@ -13,6 +13,9 @@ from models import (
     Workout,
     WorkoutSet,
     Day,
+    Coach,
+    WorkoutType,
+    WorkoutSetMeasureType,
 )
 from utils.middleware import require_user_id
 from dto import ErrorDTO
@@ -25,20 +28,56 @@ def get_plans(db: Session = Depends(get_db)):
     return db.query(Plan).options(selectinload(Plan.coach)).all()
 
 
-@router.post("/")
-def get_plans(
+@router.post("/", response_model=PlanRead)
+def create_plan(
     data: PlanCreate,
     db: Session = Depends(get_db),
     user_id=Depends(require_user_id),
 ):
+    coach = db.query(Coach).filter(Coach.user_id == user_id).first()
+    if not coach:
+        raise HTTPException(
+            400, detail=ErrorDTO(code=400, message="You are not a coach").model_dump()
+        )
 
-    new_plan = data.model_dump()
-    new_plan["user_id"] = user_id
-    plan = Plan(**new_plan)
+    # create plan
+    plan_dict = data.model_dump(exclude={"weeks"})
+    plan = Plan(**plan_dict, coach_id=coach.id)
     db.add(plan)
+    db.flush()  # flush to get plan.id
+
+    # create nested weeks, days, workouts, sets
+    for week_data in getattr(data, "weeks", []):
+        week = Week(plan_id=plan.id)
+        db.add(week)
+        db.flush()
+
+        for day_data in getattr(week_data, "days", []):
+            day = Day(week_id=week.id, day_of_week=day_data.day_of_week)
+            db.add(day)
+            db.flush()
+
+            for workout_data in getattr(day_data, "workouts", []):
+                workout_fields = workout_data.model_dump(exclude={"sets"})
+                workout_fields["type"] = WorkoutType(workout_fields["type"].value).value
+                workout = Workout(day_id=day.id, **workout_fields)
+                db.add(workout)
+                db.flush()
+
+                for set_data in getattr(workout_data, "sets", []):
+                    set_data["active_measure_type"] = WorkoutSetMeasureType(
+                        str(set_data["active_measure_type"].value).upper()
+                    )
+                    set_data["recovery_measure_type"] = WorkoutSetMeasureType(
+                        str(set_data["recovery_measure_type"].value).upper()
+                    )
+                    workout_set = WorkoutSet(
+                        workout_id=workout.id, **set_data.model_dump()
+                    )
+                    db.add(workout_set)
+
     db.commit()
     db.refresh(plan)
-
     return plan
 
 

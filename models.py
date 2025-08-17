@@ -194,9 +194,12 @@ class WorkoutCreate(BaseModel):
         orm_mode = True
 
 
-class WorkoutRead(WorkoutCreate):
+class WorkoutRead(BaseModel):
     id: int
     sets: List[WorkoutSetRead] = []
+
+    class Config:
+        orm_mode = True
 
 
 # --- Day ---
@@ -208,9 +211,12 @@ class DayCreate(BaseModel):
         orm_mode = True
 
 
-class DayRead(DayCreate):
+class DayRead(BaseModel):
     id: int
     workouts: List[WorkoutRead] = []
+
+    class Config:
+        orm_mode = True
 
 
 # --- Week ---
@@ -221,9 +227,12 @@ class WeekCreate(BaseModel):
         orm_mode = True
 
 
-class WeekRead(WeekCreate):
+class WeekRead(BaseModel):
     id: int
     days: List[DayRead] = []
+
+    class Config:
+        orm_mode = True
 
 
 # --- Plan ---
