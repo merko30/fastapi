@@ -14,6 +14,7 @@ if not DATABASE_URL:
 
 from routes.plans import router as plans_router
 from routes.users import router as auth_router
+from routes.coaches import router as coaches_router
 
 app = FastAPI()
 
@@ -37,3 +38,4 @@ async def add_user_id(request: Request, call_next):
 
 app.include_router(plans_router)
 app.include_router(auth_router)
+app.include_router(coaches_router)

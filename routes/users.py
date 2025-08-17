@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from bcrypt import hashpw, gensalt, checkpw
 
 from database import get_db
-from models import User, UserCreate, LoginData
+from models import User, UserCreate, LoginData, Coach, Athlete
 from dto import ErrorDTO
 from utils.jwt import create_access_token, create_refresh_token
 from utils.middleware import require_user_id
@@ -23,12 +23,24 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         )
 
     user_data = user.model_dump()
+    user_data.pop("is_coach")
     password = hashpw(user.password.encode("utf-8"), gensalt())
     user_data["password"] = password.decode("utf-8")
     new_user = User(**user_data)
+
     db.add(new_user)
+    db.flush()
+
+    if "is_coach" in user.model_dump():
+        coach = Coach(user_id=new_user.id)
+        db.add(coach)
+    else:
+        athlete = Athlete(user_id=new_user.id)
+        db.add(athlete)
+
     db.commit()
     db.refresh(new_user)
+
     return new_user
 
 

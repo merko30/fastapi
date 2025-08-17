@@ -147,6 +147,7 @@ class UserCreate(BaseModel):
     username: constr(min_length=3, max_length=50)
     email: EmailStr
     password: constr(min_length=6)
+    is_coach: Optional[bool]
     name: Optional[str] = None
     avatar: Optional[str] = None
 
