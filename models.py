@@ -117,13 +117,13 @@ class Workout(Base):
     __tablename__ = "workouts"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    day_id: Mapped[int] = mapped_column(ForeignKey("weeks.id"))
+    day_id: Mapped[int] = mapped_column(ForeignKey("days.id"))
     title: Mapped[str]
     description: Mapped[Optional[str]]
     type: Mapped[WorkoutType] = mapped_column(Enum(WorkoutType, name="workout_type"))
 
     day = Relationship("Day", back_populates="workouts")
-    sets = Relationship("Workout", back_populates="workout")
+    sets = Relationship("WorkoutSet", back_populates="workout")
 
 
 class WorkoutSet(Base):
