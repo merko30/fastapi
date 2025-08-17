@@ -70,7 +70,7 @@ class Plan(Base):
     coach_id: Mapped[int] = mapped_column(ForeignKey("coaches.id"))
     title: Mapped[str]
     description: Mapped[str]
-    level: Mapped[PlanLevel] = mapped_column(Enum(PlanLevel, name="workout_type"))
+    level: Mapped[PlanLevel] = mapped_column(Enum(PlanLevel, name="level"))
 
     coach = Relationship("Coach", back_populates="plans")
     weeks = Relationship("Week", back_populates="plan")
