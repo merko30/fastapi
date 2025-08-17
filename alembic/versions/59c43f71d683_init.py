@@ -1,8 +1,8 @@
-"""initial migration
+"""init
 
-Revision ID: b0efad257d3f
+Revision ID: 59c43f71d683
 Revises: 
-Create Date: 2025-08-17 12:15:36.681846
+Create Date: 2025-08-17 14:39:33.148131
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'b0efad257d3f'
+revision: str = '59c43f71d683'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -53,7 +53,7 @@ def upgrade() -> None:
     sa.Column('coach_id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(), nullable=False),
     sa.Column('description', sa.String(), nullable=False),
-    sa.Column('level', sa.Enum('beginner', 'intermediate', 'advanced', name='workout_type'), nullable=False),
+    sa.Column('level', sa.Enum('beginner', 'intermediate', 'advanced', name='level'), nullable=False),
     sa.ForeignKeyConstraint(['coach_id'], ['coaches.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -88,8 +88,8 @@ def upgrade() -> None:
     sa.Column('day_id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(), nullable=False),
     sa.Column('description', sa.String(), nullable=True),
-    sa.Column('type', sa.Enum('rest', 'strength', 'run', name='workout_type'), nullable=False),
-    sa.ForeignKeyConstraint(['day_id'], ['weeks.id'], ),
+    sa.Column('type', sa.Enum('rest', 'strength', 'run', name='type'), nullable=False),
+    sa.ForeignKeyConstraint(['day_id'], ['days.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_workouts_id'), 'workouts', ['id'], unique=False)

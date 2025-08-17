@@ -120,7 +120,7 @@ class Workout(Base):
     day_id: Mapped[int] = mapped_column(ForeignKey("days.id"))
     title: Mapped[str]
     description: Mapped[Optional[str]]
-    type: Mapped[WorkoutType] = mapped_column(Enum(WorkoutType, name="workout_type"))
+    type: Mapped[WorkoutType] = mapped_column(Enum(WorkoutType, name="type"))
 
     day = Relationship("Day", back_populates="workouts")
     sets = Relationship("WorkoutSet", back_populates="workout")
@@ -256,12 +256,16 @@ class PlanUpdate(BaseModel):
         orm_mode = True
 
 
+class CoachRead(BaseModel):
+    description: Optional[str] = None
+
+
 class PlanRead(BaseModel):
     id: int
     title: str
     description: str
     level: PlanLevel
-    author: "UserRead"
+    coach: CoachRead
     weeks: List[WeekRead] = []
 
     class Config:

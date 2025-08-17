@@ -59,18 +59,15 @@ def create_plan(
 
             for workout_data in getattr(day_data, "workouts", []):
                 workout_fields = workout_data.model_dump(exclude={"sets"})
-                workout_fields["type"] = WorkoutType(workout_fields["type"].value).value
+                workout_fields["type"] = workout_fields["type"].value
                 workout = Workout(day_id=day.id, **workout_fields)
                 db.add(workout)
                 db.flush()
 
                 for set_data in getattr(workout_data, "sets", []):
-                    set_data["active_measure_type"] = WorkoutSetMeasureType(
-                        str(set_data["active_measure_type"].value).upper()
-                    )
-                    set_data["recovery_measure_type"] = WorkoutSetMeasureType(
-                        str(set_data["recovery_measure_type"].value).upper()
-                    )
+                    data = set_data.model_dump()
+                    data["active_measure_type"] = data["active_measure_type"].value
+                    data["recovery_measure_type"] = data["recovery_measure_type"].value
                     workout_set = WorkoutSet(
                         workout_id=workout.id, **set_data.model_dump()
                     )
