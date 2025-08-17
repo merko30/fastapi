@@ -12,7 +12,7 @@ if not DATABASE_URL:
     raise RuntimeError("Environment variable DATABASE_URL is not set!")
 
 
-from routes.posts import router as posts_router
+from routes.plans import router as plans_router
 from routes.users import router as auth_router
 
 app = FastAPI()
@@ -35,5 +35,5 @@ async def add_user_id(request: Request, call_next):
     return response
 
 
-app.include_router(posts_router)
+app.include_router(plans_router)
 app.include_router(auth_router)

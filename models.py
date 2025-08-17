@@ -1,8 +1,25 @@
+import enum
+from datetime import datetime, timezone
 from pydantic import constr, BaseModel, EmailStr
-from typing import Optional
-from sqlalchemy import ForeignKey
+from typing import Optional, List
+from sqlalchemy import ForeignKey, Enum, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, Relationship
 from database import Base
+
+
+class AthletePlan(Base):
+    __tablename__ = "athlete_plans"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    athlete_id: Mapped[int] = mapped_column(ForeignKey("athletes.id"))
+    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id"))
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now(timezone.utc)
+    )
+
+    # relationships
+    athlete = Relationship("Athlete", back_populates="athlete_plans")
+    plan = Relationship("Plan", back_populates="athlete_plans")
 
 
 # an example mapping using the base
@@ -16,18 +33,114 @@ class User(Base):
     name: Mapped[Optional[str]]
     avatar: Mapped[Optional[str]]
 
-    posts = Relationship("Post", back_populates="author")
 
-
-class Post(Base):
-    __tablename__ = "posts"
+class Athlete(Base):
+    __tablename__ = "athletes"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    title: Mapped[str] = mapped_column(nullable=False)
-    content: Mapped[str] = mapped_column(nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    description: Mapped[Optional[str]]
 
-    author = Relationship("User", back_populates="posts")
+    user = Relationship("User")
+    athlete_plans: Mapped[list["AthletePlan"]] = Relationship(
+        back_populates="athlete", cascade="all, delete-orphan"
+    )
+
+
+class Coach(Base):
+    __tablename__ = "coaches"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    description: Mapped[Optional[str]]
+
+    plans = Relationship("Plan", back_populates="coach")
+
+
+class PlanLevel(enum.Enum):
+    beginner = "BEGINNER"
+    intermediate = "INTERMEDIATE"
+    advanced = "ADVANCED"
+
+
+class Plan(Base):
+    __tablename__ = "plans"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    coach_id: Mapped[int] = mapped_column(ForeignKey("coaches.id"))
+    title: Mapped[str]
+    description: Mapped[str]
+    level: Mapped[PlanLevel] = mapped_column(Enum(PlanLevel, name="workout_type"))
+
+    coach = Relationship("Coach", back_populates="plans")
+    weeks = Relationship("Week", back_populates="plan")
+
+    athlete_plans: Mapped[list["AthletePlan"]] = Relationship(
+        back_populates="plan", cascade="all, delete-orphan"
+    )
+
+
+class Week(Base):
+    __tablename__ = "weeks"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id"))
+
+    plan = Relationship("Plan", back_populates="weeks")
+    days = Relationship("Day", back_populates="week")
+
+
+class Day(Base):
+    __tablename__ = "days"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    week_id: Mapped[int] = mapped_column(ForeignKey("weeks.id"))
+    day_of_week: Mapped[int]
+
+    week = Relationship("Week", back_populates="days")
+    workouts = Relationship("Workout", back_populates="day")
+
+
+class WorkoutType(enum.Enum):
+    rest = "REST"
+    strength = "STRENGTH"
+    run = "RUN"
+
+
+class WorkoutSetMeasureType(enum.Enum):
+    distance = "DISTANCE"
+    time = "TIME"
+    reps = "REPS"
+
+
+class Workout(Base):
+    __tablename__ = "workouts"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    day_id: Mapped[int] = mapped_column(ForeignKey("weeks.id"))
+    title: Mapped[str]
+    description: Mapped[Optional[str]]
+    type: Mapped[WorkoutType] = mapped_column(Enum(WorkoutType, name="workout_type"))
+
+    day = Relationship("Day", back_populates="workouts")
+    sets = Relationship("Workout", back_populates="workout")
+
+
+class WorkoutSet(Base):
+    __tablename__ = "workout_sets"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    workout_id: Mapped[int] = mapped_column(ForeignKey("workouts.id"))
+    active_value: Mapped[int]
+    active_measure_type: Mapped[WorkoutSetMeasureType] = mapped_column(
+        Enum(WorkoutSetMeasureType, name="workout_set_measure_type")
+    )
+    recovery_value: Mapped[int] = mapped_column(nullable=True)
+    recovery_measure_type: Mapped[WorkoutSetMeasureType] = mapped_column(
+        Enum(WorkoutSetMeasureType, name="workout_set_measure_type", nullable=True)
+    )
+
+    workout = Relationship("Workout", back_populates="sets")
 
 
 class UserCreate(BaseModel):
@@ -43,16 +156,6 @@ class LoginData(BaseModel):
     password: str
 
 
-class PostCreate(BaseModel):
-    title: constr(min_length=5, max_length=100)
-    content: constr(min_length=150)
-
-
-class PostUpdate(BaseModel):
-    title: Optional[str] = None
-    content: Optional[str] = None
-
-
 class UserRead(BaseModel):
     id: int
     username: str
@@ -64,11 +167,92 @@ class UserRead(BaseModel):
         orm_mode = True
 
 
-class PostRead(BaseModel):
+# --- WorkoutSet ---
+class WorkoutSetCreate(BaseModel):
+    active_value: int
+    active_measure_type: WorkoutSetMeasureType
+    recovery_value: Optional[int] = None
+    recovery_measure_type: Optional[WorkoutSetMeasureType] = None
+
+    class Config:
+        orm_mode = True
+
+
+class WorkoutSetRead(WorkoutSetCreate):
+    id: int
+
+
+# --- Workout ---
+class WorkoutCreate(BaseModel):
+    title: constr(min_length=3, max_length=100)
+    description: Optional[str] = None
+    type: WorkoutType
+    sets: Optional[List[WorkoutSetCreate]] = []
+
+    class Config:
+        orm_mode = True
+
+
+class WorkoutRead(WorkoutCreate):
+    id: int
+    sets: List[WorkoutSetRead] = []
+
+
+# --- Day ---
+class DayCreate(BaseModel):
+    day_of_week: int
+    workouts: Optional[List[WorkoutCreate]] = []
+
+    class Config:
+        orm_mode = True
+
+
+class DayRead(DayCreate):
+    id: int
+    workouts: List[WorkoutRead] = []
+
+
+# --- Week ---
+class WeekCreate(BaseModel):
+    days: Optional[List[DayCreate]] = []
+
+    class Config:
+        orm_mode = True
+
+
+class WeekRead(WeekCreate):
+    id: int
+    days: List[DayRead] = []
+
+
+# --- Plan ---
+class PlanCreate(BaseModel):
+    title: constr(min_length=5, max_length=100)
+    description: constr(min_length=10)
+    level: PlanLevel
+    weeks: Optional[List[WeekCreate]] = []
+
+    class Config:
+        orm_mode = True
+
+
+class PlanUpdate(BaseModel):
+    title: Optional[constr(min_length=5, max_length=100)] = None
+    description: Optional[constr(min_length=10)] = None
+    level: Optional[PlanLevel] = None
+    weeks: Optional[List[WeekCreate]] = None
+
+    class Config:
+        orm_mode = True
+
+
+class PlanRead(BaseModel):
     id: int
     title: str
-    content: str
-    author: UserRead
+    description: str
+    level: PlanLevel
+    author: "UserRead"
+    weeks: List[WeekRead] = []
 
     class Config:
         orm_mode = True
