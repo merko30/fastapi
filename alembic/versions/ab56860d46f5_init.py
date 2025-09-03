@@ -1,8 +1,8 @@
 """init
 
-Revision ID: 59c43f71d683
+Revision ID: ab56860d46f5
 Revises: 
-Create Date: 2025-08-17 14:39:33.148131
+Create Date: 2025-08-17 15:02:39.426894
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '59c43f71d683'
+revision: str = 'ab56860d46f5'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -53,7 +53,7 @@ def upgrade() -> None:
     sa.Column('coach_id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(), nullable=False),
     sa.Column('description', sa.String(), nullable=False),
-    sa.Column('level', sa.Enum('beginner', 'intermediate', 'advanced', name='level'), nullable=False),
+    sa.Column('level', sa.Enum('BEGINNER', 'INTERMEDIATE', 'ADVANCED', name='level'), nullable=False),
     sa.ForeignKeyConstraint(['coach_id'], ['coaches.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -88,7 +88,7 @@ def upgrade() -> None:
     sa.Column('day_id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(), nullable=False),
     sa.Column('description', sa.String(), nullable=True),
-    sa.Column('type', sa.Enum('rest', 'strength', 'run', name='type'), nullable=False),
+    sa.Column('type', sa.Enum('REST', 'STRENGTH', 'RUN', name='type'), nullable=False),
     sa.ForeignKeyConstraint(['day_id'], ['days.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -97,9 +97,9 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('workout_id', sa.Integer(), nullable=False),
     sa.Column('active_value', sa.Integer(), nullable=False),
-    sa.Column('active_measure_type', sa.Enum('distance', 'time', 'reps', name='workout_set_measure_type'), nullable=False),
+    sa.Column('active_measure_type', sa.Enum('DISTANCE', 'TIME', 'REPS', name='workout_set_measure_type'), nullable=False),
     sa.Column('recovery_value', sa.Integer(), nullable=True),
-    sa.Column('recovery_measure_type', sa.Enum('distance', 'time', 'reps', name='workout_set_measure_type'), nullable=False),
+    sa.Column('recovery_measure_type', sa.Enum('DISTANCE', 'TIME', 'REPS', name='workout_set_measure_type'), nullable=False),
     sa.ForeignKeyConstraint(['workout_id'], ['workouts.id'], ),
     sa.PrimaryKeyConstraint('id')
     )

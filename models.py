@@ -58,9 +58,24 @@ class Coach(Base):
 
 
 class PlanLevel(enum.Enum):
-    beginner = "BEGINNER"
-    intermediate = "INTERMEDIATE"
-    advanced = "ADVANCED"
+    BEGINNER = "BEGINNER"
+    INTERMEDIATE = "INTERMEDIATE"
+    ADVANCED = "ADVANCED"
+
+
+class PlanTemplate(Base):
+    __tablename__ = "plan_templates"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    coach_id: Mapped[int] = mapped_column(ForeignKey("coaches.id"))
+    title: Mapped[str]
+    description: Mapped[str]
+    level: Mapped[PlanLevel] = mapped_column(Enum(PlanLevel, name="level"))
+    features: Mapped[Optional[str]]
+    price: Mapped[Optional[float]]
+
+    coach = Relationship("Coach", back_populates="plan_templates")
+    weeks = Relationship("Week", back_populates="template")
 
 
 class Plan(Base):
@@ -68,12 +83,16 @@ class Plan(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     coach_id: Mapped[int] = mapped_column(ForeignKey("coaches.id"))
+    template_id: Mapped[int] = mapped_column(ForeignKey("plan_templates.id"))
     title: Mapped[str]
     description: Mapped[str]
-    level: Mapped[PlanLevel] = mapped_column(Enum(PlanLevel, name="level"))
+    level: Mapped[PlanLevel] = mapped_column(
+        Enum(PlanLevel, name="plan_level", create_type=False)
+    )
 
     coach = Relationship("Coach", back_populates="plans")
     weeks = Relationship("Week", back_populates="plan")
+    template = Relationship("Template", back_populates="template")
 
     athlete_plans: Mapped[list["AthletePlan"]] = Relationship(
         back_populates="plan", cascade="all, delete-orphan"
@@ -84,9 +103,11 @@ class Week(Base):
     __tablename__ = "weeks"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id"))
+    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id"), nullable=True)
+    template_id: Mapped[int] = mapped_column(ForeignKey("plan_templates.id"))
 
     plan = Relationship("Plan", back_populates="weeks")
+    template = Relationship("PlanTemplate", back_populates="weeks")
     days = Relationship("Day", back_populates="week")
 
 
@@ -102,15 +123,15 @@ class Day(Base):
 
 
 class WorkoutType(enum.Enum):
-    rest = "REST"
-    strength = "STRENGTH"
-    run = "RUN"
+    REST = "REST"
+    STRENGTH = "STRENGTH"
+    RUN = "RUN"
 
 
 class WorkoutSetMeasureType(enum.Enum):
-    distance = "DISTANCE"
-    time = "TIME"
-    reps = "REPS"
+    DISTANCE = "DISTANCE"
+    TIME = "TIME"
+    REPS = "REPS"
 
 
 class Workout(Base):
@@ -165,7 +186,7 @@ class UserRead(BaseModel):
     avatar: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # --- WorkoutSet ---
@@ -176,7 +197,7 @@ class WorkoutSetCreate(BaseModel):
     recovery_measure_type: Optional[WorkoutSetMeasureType] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class WorkoutSetRead(WorkoutSetCreate):
@@ -191,7 +212,7 @@ class WorkoutCreate(BaseModel):
     sets: Optional[List[WorkoutSetCreate]] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class WorkoutRead(BaseModel):
@@ -199,7 +220,7 @@ class WorkoutRead(BaseModel):
     sets: List[WorkoutSetRead] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # --- Day ---
@@ -208,7 +229,7 @@ class DayCreate(BaseModel):
     workouts: Optional[List[WorkoutCreate]] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class DayRead(BaseModel):
@@ -216,7 +237,7 @@ class DayRead(BaseModel):
     workouts: List[WorkoutRead] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # --- Week ---
@@ -224,7 +245,7 @@ class WeekCreate(BaseModel):
     days: Optional[List[DayCreate]] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class WeekRead(BaseModel):
@@ -232,7 +253,7 @@ class WeekRead(BaseModel):
     days: List[DayRead] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # --- Plan ---
@@ -243,7 +264,7 @@ class PlanCreate(BaseModel):
     weeks: Optional[List[WeekCreate]] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class PlanUpdate(BaseModel):
@@ -253,7 +274,7 @@ class PlanUpdate(BaseModel):
     weeks: Optional[List[WeekCreate]] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CoachRead(BaseModel):
@@ -269,4 +290,4 @@ class PlanRead(BaseModel):
     weeks: List[WeekRead] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True

@@ -14,8 +14,6 @@ from models import (
     WorkoutSet,
     Day,
     Coach,
-    WorkoutType,
-    WorkoutSetMeasureType,
 )
 from utils.middleware import require_user_id
 from dto import ErrorDTO
@@ -42,6 +40,7 @@ def create_plan(
 
     # create plan
     plan_dict = data.model_dump(exclude={"weeks"})
+    plan_dict["level"] = plan_dict["level"].value
     plan = Plan(**plan_dict, coach_id=coach.id)
     db.add(plan)
     db.flush()  # flush to get plan.id
@@ -68,9 +67,7 @@ def create_plan(
                     data = set_data.model_dump()
                     data["active_measure_type"] = data["active_measure_type"].value
                     data["recovery_measure_type"] = data["recovery_measure_type"].value
-                    workout_set = WorkoutSet(
-                        workout_id=workout.id, **set_data.model_dump()
-                    )
+                    workout_set = WorkoutSet(workout_id=workout.id, **data)
                     db.add(workout_set)
 
     db.commit()
