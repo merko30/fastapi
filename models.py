@@ -55,6 +55,7 @@ class Coach(Base):
     description: Mapped[Optional[str]]
 
     plans = Relationship("Plan", back_populates="coach")
+    plan_templates = Relationship("PlanTemplate", back_populates="coach")
 
 
 class PlanLevel(enum.Enum):
@@ -75,6 +76,7 @@ class PlanTemplate(Base):
     price: Mapped[Optional[float]]
 
     coach = Relationship("Coach", back_populates="plan_templates")
+    plans = Relationship("Plan", back_populates="template")
     weeks = Relationship("Week", back_populates="template")
 
 
@@ -92,7 +94,7 @@ class Plan(Base):
 
     coach = Relationship("Coach", back_populates="plans")
     weeks = Relationship("Week", back_populates="plan")
-    template = Relationship("Template", back_populates="template")
+    template = Relationship("PlanTemplate", back_populates="plans")
 
     athlete_plans: Mapped[list["AthletePlan"]] = Relationship(
         back_populates="plan", cascade="all, delete-orphan"
@@ -104,7 +106,9 @@ class Week(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id"), nullable=True)
-    template_id: Mapped[int] = mapped_column(ForeignKey("plan_templates.id"))
+    template_id: Mapped[int] = mapped_column(
+        ForeignKey("plan_templates.id"), nullable=True
+    )
 
     plan = Relationship("Plan", back_populates="weeks")
     template = Relationship("PlanTemplate", back_populates="weeks")

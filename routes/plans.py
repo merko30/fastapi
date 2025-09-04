@@ -5,6 +5,7 @@ from datetime import datetime
 from database import get_db
 from models import (
     Plan,
+    PlanTemplate,
     PlanCreate,
     PlanUpdate,
     PlanRead,
@@ -21,11 +22,52 @@ from dto import ErrorDTO
 router = APIRouter(prefix="/plans")
 
 
+def generate_plan(
+    db: Session, data: PlanCreate, coach_id: int, model_class=PlanTemplate
+) -> Plan:
+    plan_dict = data.model_dump(exclude={"weeks"})
+    plan_dict["level"] = plan_dict["level"].value
+    plan = model_class(**plan_dict, coach_id=coach_id)
+    db.add(plan)
+    db.flush()  # Ensure plan.id is available
+
+    for week_data in getattr(data, "weeks", []):
+        week = Week(
+            template_id=(plan.id if model_class == PlanTemplate else None),
+            plan_id=plan.id if model_class == Plan else None,
+        )
+        db.add(week)
+        db.flush()
+
+        for day_data in getattr(week_data, "days", []):
+            day = Day(week_id=week.id, **day_data.model_dump(exclude={"workouts"}))
+            db.add(day)
+            db.flush()
+
+            for workout_data in getattr(day_data, "workouts", []):
+                workout = Workout(
+                    **workout_data.model_dump(exclude={"sets"}), day_id=day.id
+                )
+                db.add(workout)
+                db.flush()
+
+                for set_data in getattr(workout_data, "sets", []):
+                    workout_set = WorkoutSet(
+                        **set_data.model_dump(), workout_id=workout.id
+                    )
+                    db.add(workout_set)
+
+    db.commit()
+    db.refresh(plan)
+    return plan
+
+
 @router.get("/", response_model=List[PlanRead])
 def get_plans(db: Session = Depends(get_db)):
-    return db.query(Plan).options(selectinload(Plan.coach)).all()
+    return db.query(PlanTemplate).options(selectinload(PlanTemplate.coach)).all()
 
 
+# coach generating a plan template
 @router.post("/", response_model=PlanRead)
 def create_plan(
     data: PlanCreate,
@@ -38,47 +80,17 @@ def create_plan(
             400, detail=ErrorDTO(code=400, message="You are not a coach").model_dump()
         )
 
-    # create plan
-    plan_dict = data.model_dump(exclude={"weeks"})
-    plan_dict["level"] = plan_dict["level"].value
-    plan = Plan(**plan_dict, coach_id=coach.id)
-    db.add(plan)
-    db.flush()  # flush to get plan.id
-
-    # create nested weeks, days, workouts, sets
-    for week_data in getattr(data, "weeks", []):
-        week = Week(plan_id=plan.id)
-        db.add(week)
-        db.flush()
-
-        for day_data in getattr(week_data, "days", []):
-            day = Day(week_id=week.id, day_of_week=day_data.day_of_week)
-            db.add(day)
-            db.flush()
-
-            for workout_data in getattr(day_data, "workouts", []):
-                workout_fields = workout_data.model_dump(exclude={"sets"})
-                workout_fields["type"] = workout_fields["type"].value
-                workout = Workout(day_id=day.id, **workout_fields)
-                db.add(workout)
-                db.flush()
-
-                for set_data in getattr(workout_data, "sets", []):
-                    data = set_data.model_dump()
-                    data["active_measure_type"] = data["active_measure_type"].value
-                    data["recovery_measure_type"] = data["recovery_measure_type"].value
-                    workout_set = WorkoutSet(workout_id=workout.id, **data)
-                    db.add(workout_set)
-
-    db.commit()
-    db.refresh(plan)
+    plan = generate_plan(db, data, coach.id, model_class=PlanTemplate)
     return plan
 
 
 @router.get("/{id}", response_model=PlanRead)
 def get_plan(id: int, db: Session = Depends(get_db)):
     plan = (
-        db.query(Plan).filter(Plan.id == id).options(selectinload(Plan.coach)).first()
+        db.query(PlanTemplate)
+        .filter(Plan.id == id)
+        .options(selectinload(PlanTemplate.coach))
+        .first()
     )
 
     if not plan:
@@ -96,7 +108,7 @@ def update_plan(
     db: Session = Depends(get_db),
     user_id=Depends(require_user_id),
 ):
-    plan_in_db = db.query(Plan).filter(Plan.id == id).first()
+    plan_in_db = db.query(PlanTemplate).filter(PlanTemplate.id == id).first()
 
     if not plan_in_db:
         raise HTTPException(
@@ -112,12 +124,14 @@ def update_plan(
     return plan_in_db
 
 
-@router.post("/{athlete_id}/{plan_id}")
+@router.post("/{athlete_id}/{plan_template_id}")
 def assign_plan_to_athlete(
-    plan_id: int, athlete_id: int, db: Session = Depends(get_db)
+    plan_template_id: int, athlete_id: int, db: Session = Depends(get_db)
 ):
     # fetch original plan
-    original_plan = db.query(Plan).filter(Plan.id == plan_id).first()
+    original_plan = (
+        db.query(PlanTemplate).filter(PlanTemplate.id == plan_template_id).first()
+    )
     if not original_plan:
         raise HTTPException(404, "Plan not found")
 
