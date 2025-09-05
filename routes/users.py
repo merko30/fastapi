@@ -1,9 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from bcrypt import hashpw, gensalt, checkpw
 
 from database import get_db
-from models import User, UserCreate, LoginData, Coach, Athlete
+from models import (
+    User,
+    UserCreate,
+    LoginData,
+    Coach,
+    Athlete,
+    AthletePlan,
+    Plan,
+)
 from dto import ErrorDTO
 from utils.jwt import create_access_token, create_refresh_token
 from utils.middleware import require_user_id
@@ -76,3 +84,23 @@ def get_current_user(user_id=Depends(require_user_id), db: Session = Depends(get
     user = db.query(User).filter(User.id == int(user_id)).first()
 
     return {"user": user}
+
+
+@router.get("/user/plans")
+def get_user_plans(user_id=Depends(require_user_id), db: Session = Depends(get_db)):
+
+    athlete = db.query(Athlete).filter(Athlete.user_id == int(user_id)).first()
+
+    if not athlete:
+        raise HTTPException(
+            401, detail=ErrorDTO(code=401, message="Unauthorized").model_dump()
+        )
+
+    plans = (
+        db.query(AthletePlan)
+        .filter(AthletePlan.athlete_id == athlete.id)
+        .options(selectinload(AthletePlan.plan).selectinload(Plan.weeks))
+        .all()
+    )
+
+    return {"plans": plans}

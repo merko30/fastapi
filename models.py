@@ -58,6 +58,7 @@ class Coach(Base):
 
     plans = Relationship("Plan", back_populates="coach")
     plan_templates = Relationship("PlanTemplate", back_populates="coach")
+    user = Relationship("User")
 
 
 class PlanLevel(enum.Enum):

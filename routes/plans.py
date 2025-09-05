@@ -64,7 +64,11 @@ def generate_plan(
 
 @router.get("/", response_model=List[PlanRead])
 def get_plans(db: Session = Depends(get_db)):
-    return db.query(PlanTemplate).options(selectinload(PlanTemplate.coach)).all()
+    return (
+        db.query(PlanTemplate)
+        .options(selectinload(PlanTemplate.coach).selectinload(Coach.user))
+        .all()
+    )
 
 
 # coach generating a plan template
