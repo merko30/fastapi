@@ -64,7 +64,7 @@ def login(data: LoginData, db: Session = Depends(get_db)):
             401, detail=ErrorDTO(code=401, message="Invalid credentials").model_dump()
         )
 
-    token = create_access_token(user.id)
+    token = create_access_token(user)
     refresh_token = create_refresh_token(user.id, "abc")
 
     return {"token": token, "refresh_token": refresh_token}

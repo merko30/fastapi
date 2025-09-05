@@ -41,6 +41,7 @@ async def add_user_id(request: Request, call_next):
         try:
             payload = decode_token(token)
             request.state.user_id = payload.get("sub")
+            request.state.roles = payload.get("roles")
         except Exception:
             request.state.user_id = None
     else:

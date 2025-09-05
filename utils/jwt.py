@@ -2,15 +2,17 @@ from typing import Any
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 import jwt
+from models import User
 
 SECRET = "supersecret"
 ALGORITHM = "HS256"
 
 
-def create_access_token(user_id: int):
+def create_access_token(user: User):
     now = datetime.now(timezone.utc)
     payload = {
-        "sub": str(user_id),
+        "sub": str(user.id),
+        "roles": user.roles,
         # TODO: make it shorter later
         "exp": now + timedelta(days=7),
         "iat": now,
