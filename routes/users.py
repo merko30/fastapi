@@ -23,15 +23,16 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         )
 
     user_data = user.model_dump()
-    user_data.pop("is_coach")
+    is_coach = user_data.pop("is_coach", False)
     password = hashpw(user.password.encode("utf-8"), gensalt())
     user_data["password"] = password.decode("utf-8")
+    user_data["roles"] = ["coach"] if is_coach else ["athlete"]
     new_user = User(**user_data)
 
     db.add(new_user)
     db.flush()
 
-    if "is_coach" in user.model_dump():
+    if is_coach:
         coach = Coach(user_id=new_user.id)
         db.add(coach)
     else:

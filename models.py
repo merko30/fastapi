@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from pydantic import constr, BaseModel, EmailStr
 from typing import Optional, List
 from sqlalchemy import ForeignKey, Enum, DateTime
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, Relationship
 from database import Base
 
@@ -32,6 +33,7 @@ class User(Base):
     password: Mapped[str] = mapped_column(nullable=False)
     name: Mapped[Optional[str]]
     avatar: Mapped[Optional[str]]
+    roles: Mapped[List[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
 
 
 class Athlete(Base):
@@ -188,6 +190,7 @@ class UserRead(BaseModel):
     email: str
     name: Optional[str] = None
     avatar: Optional[str] = None
+    roles: Optional[List[str]] = []
 
     class Config:
         from_attributes = True
