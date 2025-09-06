@@ -67,6 +67,13 @@ class PlanLevel(enum.Enum):
     ADVANCED = "ADVANCED"
 
 
+class PlanType(enum.Enum):
+    RUN = "RUN"
+    BIKE = "BIKE"
+    STRENGTH = "STRENGTH"
+    HYBRID = "HYBRID"
+
+
 class PlanTemplate(Base):
     __tablename__ = "plan_templates"
 
@@ -77,6 +84,7 @@ class PlanTemplate(Base):
     level: Mapped[PlanLevel] = mapped_column(Enum(PlanLevel, name="level"))
     features: Mapped[Optional[str]]
     price: Mapped[Optional[float]]
+    type: Mapped[PlanType] = mapped_column(Enum(PlanType, name="type"))
 
     coach = Relationship("Coach", back_populates="plan_templates")
     plans = Relationship("Plan", back_populates="template")
@@ -94,6 +102,7 @@ class Plan(Base):
     level: Mapped[PlanLevel] = mapped_column(
         Enum(PlanLevel, name="plan_level", create_type=False)
     )
+    type: Mapped[PlanType] = mapped_column(Enum(PlanType, name="type"))
 
     coach = Relationship("Coach", back_populates="plans")
     weeks = Relationship("Week", back_populates="plan")
@@ -112,6 +121,7 @@ class Week(Base):
     template_id: Mapped[int] = mapped_column(
         ForeignKey("plan_templates.id"), nullable=True
     )
+    order: Mapped[int]
 
     plan = Relationship("Plan", back_populates="weeks")
     template = Relationship("PlanTemplate", back_populates="weeks")
@@ -124,15 +134,17 @@ class Day(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     week_id: Mapped[int] = mapped_column(ForeignKey("weeks.id"))
     day_of_week: Mapped[int]
+    # maybe redundant? - use day of the week for order
+    order: Mapped[int]
 
     week = Relationship("Week", back_populates="days")
     workouts = Relationship("Workout", back_populates="day")
 
 
 class WorkoutType(enum.Enum):
-    REST = "REST"
     STRENGTH = "STRENGTH"
     RUN = "RUN"
+    HYBRID = "HYBRID"
 
 
 class WorkoutSetMeasureType(enum.Enum):
@@ -148,6 +160,7 @@ class Workout(Base):
     day_id: Mapped[int] = mapped_column(ForeignKey("days.id"))
     title: Mapped[str]
     description: Mapped[Optional[str]]
+    order: Mapped[int]
     type: Mapped[WorkoutType] = mapped_column(Enum(WorkoutType, name="type"))
 
     day = Relationship("Day", back_populates="workouts")
@@ -159,13 +172,21 @@ class WorkoutSet(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     workout_id: Mapped[int] = mapped_column(ForeignKey("workouts.id"))
+    name: Mapped[str]
+    description: Mapped[Optional[str]]
+    order: Mapped[int]
     active_value: Mapped[int]
     active_measure_type: Mapped[WorkoutSetMeasureType] = mapped_column(
         Enum(WorkoutSetMeasureType, name="workout_set_measure_type")
     )
-    recovery_value: Mapped[int] = mapped_column(nullable=True)
+    recovery_value: Mapped[int] = mapped_column(nullable=True, default=0)
     recovery_measure_type: Mapped[WorkoutSetMeasureType] = mapped_column(
-        Enum(WorkoutSetMeasureType, name="workout_set_measure_type", nullable=True)
+        Enum(
+            WorkoutSetMeasureType,
+            name="workout_set_measure_type",
+            nullable=True,
+            default=WorkoutSetMeasureType.TIME,
+        )
     )
 
     workout = Relationship("Workout", back_populates="sets")
@@ -203,6 +224,9 @@ class WorkoutSetCreate(BaseModel):
     active_measure_type: WorkoutSetMeasureType
     recovery_value: Optional[int] = None
     recovery_measure_type: Optional[WorkoutSetMeasureType] = None
+    name: str
+    description: Optional[str]
+    order: int
 
     class Config:
         from_attributes = True
@@ -218,12 +242,13 @@ class WorkoutCreate(BaseModel):
     description: Optional[str] = None
     type: WorkoutType
     sets: Optional[List[WorkoutSetCreate]] = []
+    order: int
 
     class Config:
         from_attributes = True
 
 
-class WorkoutRead(BaseModel):
+class WorkoutRead(WorkoutCreate):
     id: int
     sets: List[WorkoutSetRead] = []
 
@@ -235,12 +260,13 @@ class WorkoutRead(BaseModel):
 class DayCreate(BaseModel):
     day_of_week: int
     workouts: Optional[List[WorkoutCreate]] = []
+    order: int
 
     class Config:
         from_attributes = True
 
 
-class DayRead(BaseModel):
+class DayRead(DayCreate):
     id: int
     workouts: List[WorkoutRead] = []
 
@@ -251,14 +277,14 @@ class DayRead(BaseModel):
 # --- Week ---
 class WeekCreate(BaseModel):
     days: Optional[List[DayCreate]] = []
+    order: int
 
     class Config:
         from_attributes = True
 
 
-class WeekRead(BaseModel):
+class WeekRead(WeekCreate):
     id: int
-    days: List[DayRead] = []
 
     class Config:
         from_attributes = True
