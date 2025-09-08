@@ -35,16 +35,13 @@ app.add_middleware(
 
 @app.middleware("http")
 async def add_user_id(request: Request, call_next):
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        token = auth_header.split(" ")[1]
-        try:
-            payload = decode_token(token)
-            request.state.user_id = payload.get("sub")
-            request.state.roles = payload.get("roles")
-        except Exception:
-            request.state.user_id = None
-    else:
+    print(request.cookies.get("token"))
+    token = request.cookies.get("token")
+    try:
+        payload = decode_token(token)
+        request.state.user_id = payload.get("sub")
+        request.state.roles = payload.get("roles")
+    except Exception:
         request.state.user_id = None
 
     response = await call_next(request)

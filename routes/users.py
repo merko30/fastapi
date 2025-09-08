@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from datetime import timedelta
+from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, selectinload
 from bcrypt import hashpw, gensalt, checkpw
 
@@ -13,7 +15,7 @@ from models import (
     Plan,
 )
 from dto import ErrorDTO
-from utils.jwt import create_access_token, create_refresh_token
+from utils.jwt import create_access_token
 from utils.middleware import require_user_id
 
 router = APIRouter(prefix="/auth")
@@ -55,7 +57,6 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login")
 def login(data: LoginData, db: Session = Depends(get_db)):
-
     user = db.query(User).filter(User.email == data.email).first()
 
     if not user:
@@ -73,9 +74,20 @@ def login(data: LoginData, db: Session = Depends(get_db)):
         )
 
     token = create_access_token(user)
-    refresh_token = create_refresh_token(user.id, "abc")
+    # refresh_token = create_refresh_token(user.id, "abc")
 
-    return {"token": token, "refresh_token": refresh_token}
+    response = JSONResponse(content={"message": "Logged in"})
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=False,  # localhost: http
+        samesite="lax",  # allow cross-port on localhost
+        max_age=3600,
+        path="/",
+    )
+
+    return response
 
 
 @router.get("/me")
