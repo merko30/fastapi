@@ -19,14 +19,9 @@ from routes.coaches import router as coaches_router
 
 app = FastAPI()
 
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,8 +30,7 @@ app.add_middleware(
 
 @app.middleware("http")
 async def add_user_id(request: Request, call_next):
-    print(request.cookies.get("token"))
-    token = request.cookies.get("token")
+    token = request.cookies.get("access_token")
     try:
         payload = decode_token(token)
         request.state.user_id = payload.get("sub")

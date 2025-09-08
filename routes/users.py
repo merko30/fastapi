@@ -10,6 +10,7 @@ from models import (
     UserCreate,
     LoginData,
     Coach,
+    UserRead,
     Athlete,
     AthletePlan,
     Plan,
@@ -55,8 +56,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 
-@router.post("/login")
-def login(data: LoginData, db: Session = Depends(get_db)):
+@router.post("/login", response_model=UserRead)
+def login(data: LoginData, response: Response, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == data.email).first()
 
     if not user:
@@ -76,7 +77,6 @@ def login(data: LoginData, db: Session = Depends(get_db)):
     token = create_access_token(user)
     # refresh_token = create_refresh_token(user.id, "abc")
 
-    response = JSONResponse(content={"message": "Logged in"})
     response.set_cookie(
         key="access_token",
         value=token,
@@ -87,15 +87,30 @@ def login(data: LoginData, db: Session = Depends(get_db)):
         path="/",
     )
 
-    return response
+    return user
 
 
-@router.get("/me")
-def get_current_user(user_id=Depends(require_user_id), db: Session = Depends(get_db)):
+@router.get("/me", response_model=UserRead)
+def get_current_user(
+    response: Response, user_id=Depends(require_user_id), db: Session = Depends(get_db)
+):
 
     user = db.query(User).filter(User.id == int(user_id)).first()
 
-    return {"user": user}
+    if not user:
+        response.delete_cookie("access_token")
+        raise HTTPException(
+            401, detail=ErrorDTO(code=401, message="Unauthorized").model_dump()
+        )
+
+    return user
+
+
+@router.post("/logout")
+def logout(response: Response):
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return {"message": "Logged out"}
 
 
 @router.get("/user/plans")
