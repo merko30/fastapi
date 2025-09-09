@@ -35,6 +35,7 @@ def generate_plan(
         week = Week(
             template_id=(plan.id if model_class == PlanTemplate else None),
             plan_id=plan.id if model_class == Plan else None,
+            **week_data.model_dump(exclude={"days"})
         )
         db.add(week)
         db.flush()
@@ -83,6 +84,8 @@ def create_plan(
         raise HTTPException(
             400, detail=ErrorDTO(code=400, message="You are not a coach").model_dump()
         )
+
+    print(data)
 
     plan = generate_plan(db, data, coach.id, model_class=PlanTemplate)
     return plan

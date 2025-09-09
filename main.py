@@ -33,6 +33,7 @@ async def add_user_id(request: Request, call_next):
     token = request.cookies.get("access_token")
     try:
         payload = decode_token(token)
+        print(payload)
         request.state.user_id = payload.get("sub")
         request.state.roles = payload.get("roles")
     except Exception:

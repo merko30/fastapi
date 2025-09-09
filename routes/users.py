@@ -14,6 +14,7 @@ from models import (
     Athlete,
     AthletePlan,
     Plan,
+    CurrentUserRead,
 )
 from dto import ErrorDTO
 from utils.jwt import create_access_token
@@ -90,22 +91,6 @@ def login(data: LoginData, response: Response, db: Session = Depends(get_db)):
     return user
 
 
-@router.get("/me", response_model=UserRead)
-def get_current_user(
-    response: Response, user_id=Depends(require_user_id), db: Session = Depends(get_db)
-):
-
-    user = db.query(User).filter(User.id == int(user_id)).first()
-
-    if not user:
-        response.delete_cookie("access_token")
-        raise HTTPException(
-            401, detail=ErrorDTO(code=401, message="Unauthorized").model_dump()
-        )
-
-    return user
-
-
 @router.post("/logout")
 def logout(response: Response):
     response.delete_cookie("access_token")
@@ -113,21 +98,45 @@ def logout(response: Response):
     return {"message": "Logged out"}
 
 
-@router.get("/user/plans")
-def get_user_plans(user_id=Depends(require_user_id), db: Session = Depends(get_db)):
+# @router.get("/me", response_model=UserRead)
+# def get_current_user(
+#     response: Response, user_id=Depends(require_user_id), db: Session = Depends(get_db)
+# ):
 
-    athlete = db.query(Athlete).filter(Athlete.user_id == int(user_id)).first()
+#     user = db.query(User).filter(User.id == int(user_id)).first()
 
-    if not athlete:
+#     if not user:
+#         response.delete_cookie("access_token")
+#         raise HTTPException(
+#             401, detail=ErrorDTO(code=401, message="Unauthorized").model_dump()
+#         )
+
+#     return user
+
+
+@router.get("/me", response_model=CurrentUserRead)
+def get_current_user(
+    response: Response, user_id=Depends(require_user_id), db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == int(user_id)).first()
+
+    # TODO: move to middleware
+    if not user:
+        response.delete_cookie("access_token")
         raise HTTPException(
             401, detail=ErrorDTO(code=401, message="Unauthorized").model_dump()
         )
 
-    plans = (
-        db.query(AthletePlan)
-        .filter(AthletePlan.athlete_id == athlete.id)
-        .options(selectinload(AthletePlan.plan).selectinload(Plan.weeks))
-        .all()
-    )
+    athlete = db.query(Athlete).filter(Athlete.user_id == user.id).first()
 
-    return {"plans": plans}
+    plans = []
+    if athlete:
+        athlete_plans = (
+            db.query(AthletePlan)
+            .filter(AthletePlan.athlete_id == athlete.id)
+            .options(selectinload(AthletePlan.plan).selectinload(Plan.weeks))
+            .all()
+        )
+        plans = [ap.plan for ap in athlete_plans]
+
+    return {**user.__dict__, "plans": plans}

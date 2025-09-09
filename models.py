@@ -295,6 +295,9 @@ class PlanCreate(BaseModel):
     title: constr(min_length=5, max_length=100)
     description: constr(min_length=10)
     level: PlanLevel
+    type: PlanType
+    features: Optional[List[str]] = []
+    price: Optional[int] = 0
     weeks: Optional[List[WeekCreate]] = []
 
     class Config:
@@ -325,3 +328,7 @@ class PlanRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CurrentUserRead(UserRead):
+    plans: List[PlanRead] = []
