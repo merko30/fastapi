@@ -315,7 +315,9 @@ class PlanUpdate(BaseModel):
 
 
 class CoachRead(BaseModel):
+    id: int
     description: Optional[str] = None
+    user: UserRead
 
 
 class PlanRead(BaseModel):
