@@ -44,8 +44,11 @@ class Conversation(Base):
     recipient_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
 
-    user = Relationship("User")
-    recipient = Relationship("User")
+    user = Relationship("User", foreign_keys=[user_id])
+    recipient = Relationship("User", foreign_keys=[recipient_id])
+    messages = Relationship(
+        "Message", back_populates="conversation", order_by="Message.created_at.asc()"
+    )
 
 
 class Message(Base):
@@ -57,8 +60,19 @@ class Message(Base):
     content: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
 
-    conversation = Relationship("Conversation")
+    conversation = Relationship("Conversation", back_populates="messages")
     sender = Relationship("User")
+
+
+class MessageRead(BaseModel):
+    id: int
+    sender_id: int
+    conversation_id: int
+    content: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 class Athlete(Base):
