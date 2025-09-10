@@ -1,7 +1,8 @@
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import json
 
 from utils.jwt import decode_token
 
@@ -41,6 +42,45 @@ async def add_user_id(request: Request, call_next):
 
     response = await call_next(request)
     return response
+
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections:
+            await connection.send_text(json.dumps(message))
+
+
+manager = ConnectionManager()
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            obj = json.loads(data)  # parse JSON string into dict
+            print("Received object:", obj)
+
+            await manager.broadcast(
+                {
+                    "type": "chat",
+                    "raw": obj,
+                }
+            )
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+        print("Client disconnected")
 
 
 app.include_router(plans_router)
