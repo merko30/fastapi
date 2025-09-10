@@ -36,6 +36,31 @@ class User(Base):
     roles: Mapped[List[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
 
 
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    recipient_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+
+    user = Relationship("User")
+    recipient = Relationship("User")
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    conversation_id: Mapped[int] = mapped_column(ForeignKey("conversations.id"))
+    sender_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    content: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+
+    conversation = Relationship("Conversation")
+    sender = Relationship("User")
+
+
 class Athlete(Base):
     __tablename__ = "athletes"
 
