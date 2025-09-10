@@ -1,9 +1,7 @@
-from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, Response
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from sqlalchemy.orm import Session, selectinload
 from bcrypt import hashpw, gensalt, checkpw
-
+from datetime import datetime, timedelta
 from database import get_db
 from models import (
     User,
@@ -17,7 +15,7 @@ from models import (
     CurrentUserRead,
 )
 from dto import ErrorDTO
-from utils.jwt import create_access_token
+from utils.jwt import create_access_token, create_refresh_token, decode_token
 from utils.middleware import require_user_id
 
 router = APIRouter(prefix="/auth")
@@ -76,7 +74,7 @@ def login(data: LoginData, response: Response, db: Session = Depends(get_db)):
         )
 
     token = create_access_token(user)
-    # refresh_token = create_refresh_token(user.id, "abc")
+    refresh_token = create_refresh_token(user.id)
 
     response.set_cookie(
         key="access_token",
@@ -84,8 +82,17 @@ def login(data: LoginData, response: Response, db: Session = Depends(get_db)):
         httponly=True,
         secure=False,  # localhost: http
         samesite="lax",  # allow cross-port on localhost
-        max_age=3600,
+        max_age=15 * 60,
         path="/",
+    )
+
+    response.set_cookie(
+        "refresh_token",
+        refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=7 * 24 * 60 * 60,
     )
 
     return user
@@ -98,29 +105,74 @@ def logout(response: Response):
     return {"message": "Logged out"}
 
 
-# @router.get("/me", response_model=UserRead)
-# def get_current_user(
-#     response: Response, user_id=Depends(require_user_id), db: Session = Depends(get_db)
-# ):
+def refresh_access_token(
+    request: Request,
+    db: Session,
+    response: Response,
+    refresh_threshold_minutes: int = 2,
+) -> int | None:
+    """
+    Checks if access_token is about to expire. If so, validates refresh_token,
+    creates a new access token, sets it in the response cookies, and returns it.
+    Otherwise, returns the original access_token.
+    """
 
-#     user = db.query(User).filter(User.id == int(user_id)).first()
+    access_token = request.cookies.get("access_token")
+    refresh_token = request.cookies.get("refresh_token")
 
-#     if not user:
-#         response.delete_cookie("access_token")
-#         raise HTTPException(
-#             401, detail=ErrorDTO(code=401, message="Unauthorized").model_dump()
-#         )
+    if not access_token or not refresh_token:
+        return access_token  # nothing to do
 
-#     return user
+    try:
+        payload = decode_token(access_token)
+        exp = datetime.utcfromtimestamp(payload.get("exp"))
+        now = datetime.utcnow()
+        threshold_time = now + timedelta(minutes=refresh_threshold_minutes)
+
+        # refresh if token expires within the threshold
+        if threshold_time > exp:
+            # validate refresh token and get user
+            payload_refresh = decode_token(refresh_token)
+            user_id = payload_refresh.get("sub")
+            user = db.query(User).filter(User.id == int(user_id)).first()
+            if not user:
+                raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+            # create new access token and set cookie
+            new_access_token = create_access_token(user)
+            print("new", new_access_token)
+            response.set_cookie(
+                key="access_token",
+                value=new_access_token,
+                httponly=True,
+                secure=False,  # True in production
+                samesite="lax",
+                max_age=15 * 60,
+                path="/",
+            )
+            return user.id
+
+    except Exception:
+        # invalid token, just return original
+        pass
+
+    return None
 
 
 @router.get("/me", response_model=CurrentUserRead)
 def get_current_user(
-    response: Response, user_id=Depends(require_user_id), db: Session = Depends(get_db)
+    request: Request,
+    response: Response,
+    user_id=Depends(require_user_id),
+    db: Session = Depends(get_db),
 ):
-    user = db.query(User).filter(User.id == int(user_id)).first()
-
-    # TODO: move to middleware
+    fresh_user_id = refresh_access_token(request=request, response=response, db=db)
+    # fetch the current user
+    user = (
+        db.query(User)
+        .filter(User.id == int(fresh_user_id if fresh_user_id else user_id))
+        .first()
+    )
     if not user:
         response.delete_cookie("access_token")
         raise HTTPException(

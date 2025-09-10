@@ -13,18 +13,17 @@ def create_access_token(user: User):
     payload = {
         "sub": str(user.id),
         "roles": user.roles,
-        # TODO: make it shorter later
-        "exp": now + timedelta(days=7),
+        "exp": now + timedelta(minutes=15),
         "iat": now,
     }
     return jwt.encode(payload, SECRET, algorithm="HS256")
 
 
-def create_refresh_token(user_id: int, jti: str):
+def create_refresh_token(user_id: int):
     now = datetime.now(timezone.utc)
     payload = {
         "sub": str(user_id),
-        "jti": jti,  # unique ID for revocation
+        # "jti": jti,  # unique ID for revocation
         "exp": now + timedelta(days=7),
         "iat": now,
     }
