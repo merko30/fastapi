@@ -109,7 +109,7 @@ def refresh_access_token(
     request: Request,
     db: Session,
     response: Response,
-    refresh_threshold_minutes: int = 2,
+    refresh_threshold_minutes: int = 3,
 ) -> int | None:
     """
     Checks if access_token is about to expire. If so, validates refresh_token,
@@ -140,7 +140,6 @@ def refresh_access_token(
 
             # create new access token and set cookie
             new_access_token = create_access_token(user)
-            print("new", new_access_token)
             response.set_cookie(
                 key="access_token",
                 value=new_access_token,
