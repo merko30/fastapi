@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import json
@@ -7,7 +7,7 @@ from models import Message, MessageRead
 from database import get_db
 from sqlalchemy.orm import Session
 
-from utils.jwt import decode_token
+from utils.middleware import add_user_to_request
 
 load_dotenv()
 
@@ -34,19 +34,7 @@ app.add_middleware(
 )
 
 
-@app.middleware("http")
-async def add_user_id(request: Request, call_next):
-    token = request.cookies.get("access_token")
-    try:
-        payload = decode_token(token)
-        print(payload)
-        request.state.user_id = payload.get("sub")
-        request.state.roles = payload.get("roles")
-    except Exception:
-        request.state.user_id = None
-
-    response = await call_next(request)
-    return response
+app.middleware("http")(add_user_to_request)
 
 
 class ConnectionManager:

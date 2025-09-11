@@ -153,45 +153,6 @@ def get_current_user(
     return {**user.__dict__, "plans": plans}
 
 
-@router.post("/refresh")
-def refresh_access_token(
-    request: Request,
-    response: Response,
-    db: Session = Depends(get_db),
-):
-    refresh_token = request.cookies.get("refresh_token")
-    if not refresh_token:
-        raise HTTPException(status_code=401, detail="Missing refresh token")
-
-    try:
-        payload = decode_token(refresh_token)
-        user_id = payload.get("sub")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid refresh token")
-
-        user = db.query(User).filter(User.id == int(user_id)).first()
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid refresh token")
-
-        # ✅ issue new access token
-        new_access_token = create_access_token(user)
-
-        response.set_cookie(
-            key="access_token",
-            value=new_access_token,
-            httponly=True,
-            secure=False,  # True in production
-            samesite="lax",
-            max_age=15 * 60,
-            path="/",
-        )
-
-        return {"ok": True}
-
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid refresh token")
-
-
 @router.put("/me")
 def update_current_user(
     data: UpdateData,
