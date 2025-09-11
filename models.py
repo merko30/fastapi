@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime, timezone
-from pydantic import constr, BaseModel, EmailStr
+from pydantic import constr, BaseModel, EmailStr, computed_field
 from typing import Optional, List
 from sqlalchemy import ForeignKey, Enum, DateTime
 from sqlalchemy.dialects.postgresql import JSONB
@@ -258,6 +258,13 @@ class UserRead(BaseModel):
     name: Optional[str] = None
     avatar: Optional[str] = None
     roles: Optional[List[str]] = []
+
+    @computed_field
+    @property
+    def avatar_url(self) -> str:
+        from utils.images import get_presigned_url
+
+        return get_presigned_url(self.avatar)
 
     class Config:
         from_attributes = True

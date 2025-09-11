@@ -3,7 +3,6 @@ from fastapi import (
     Depends,
     HTTPException,
     Response,
-    Request,
     File,
     UploadFile,
 )
@@ -27,6 +26,7 @@ from models import (
     UpdateData,
 )
 from dto import ErrorDTO
+from utils.images import attach_presigned_urls
 from utils.jwt import create_access_token, create_refresh_token, decode_token
 from utils.middleware import require_user_id
 
@@ -129,14 +129,6 @@ def get_current_user(
         raise HTTPException(
             401, detail=ErrorDTO(code=401, message="Unauthorized").model_dump()
         )
-
-    if user.avatar:
-        presigned_url = s3_client.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": BUCKET_NAME, "Key": user.avatar},
-            ExpiresIn=3600,  # 1 hour
-        )
-        user.avatar = presigned_url
 
     athlete = db.query(Athlete).filter(Athlete.user_id == user.id).first()
 
