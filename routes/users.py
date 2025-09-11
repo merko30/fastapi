@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from sqlalchemy.orm import Session, selectinload
 from bcrypt import hashpw, gensalt, checkpw
-from datetime import datetime, timedelta
 from database import get_db
 from models import (
     User,
@@ -105,73 +104,13 @@ def logout(response: Response):
     return {"message": "Logged out"}
 
 
-def refresh_access_token(
-    request: Request,
-    db: Session,
-    response: Response,
-    refresh_threshold_minutes: int = 3,
-) -> int | None:
-    """
-    Checks if access_token is about to expire. If so, validates refresh_token,
-    creates a new access token, sets it in the response cookies, and returns it.
-    Otherwise, returns the original access_token.
-    """
-
-    access_token = request.cookies.get("access_token")
-    refresh_token = request.cookies.get("refresh_token")
-
-    if not access_token or not refresh_token:
-        return access_token  # nothing to do
-
-    try:
-        payload = decode_token(access_token)
-        exp = datetime.utcfromtimestamp(payload.get("exp"))
-        now = datetime.utcnow()
-        threshold_time = now + timedelta(minutes=refresh_threshold_minutes)
-
-        # refresh if token expires within the threshold
-        if threshold_time > exp:
-            # validate refresh token and get user
-            payload_refresh = decode_token(refresh_token)
-            user_id = payload_refresh.get("sub")
-            user = db.query(User).filter(User.id == int(user_id)).first()
-            if not user:
-                raise HTTPException(status_code=401, detail="Invalid refresh token")
-
-            # create new access token and set cookie
-            new_access_token = create_access_token(user)
-            response.set_cookie(
-                key="access_token",
-                value=new_access_token,
-                httponly=True,
-                secure=False,  # True in production
-                samesite="lax",
-                max_age=15 * 60,
-                path="/",
-            )
-            return user.id
-
-    except Exception:
-        # invalid token, just return original
-        pass
-
-    return None
-
-
 @router.get("/me", response_model=CurrentUserRead)
 def get_current_user(
-    request: Request,
     response: Response,
     user_id=Depends(require_user_id),
     db: Session = Depends(get_db),
 ):
-    fresh_user_id = refresh_access_token(request=request, response=response, db=db)
-    # fetch the current user
-    user = (
-        db.query(User)
-        .filter(User.id == int(fresh_user_id if fresh_user_id else user_id))
-        .first()
-    )
+    user = db.query(User).filter(User.id == user_id).first()
     if not user:
         response.delete_cookie("access_token")
         raise HTTPException(
@@ -191,3 +130,42 @@ def get_current_user(
         plans = [ap.plan for ap in athlete_plans]
 
     return {**user.__dict__, "plans": plans}
+
+
+@router.post("/refresh")
+def refresh_access_token(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Missing refresh token")
+
+    try:
+        payload = decode_token(refresh_token)
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+        # ✅ issue new access token
+        new_access_token = create_access_token(user)
+
+        response.set_cookie(
+            key="access_token",
+            value=new_access_token,
+            httponly=True,
+            secure=False,  # True in production
+            samesite="lax",
+            max_age=15 * 60,
+            path="/",
+        )
+
+        return {"ok": True}
+
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
