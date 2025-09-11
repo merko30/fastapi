@@ -36,9 +36,6 @@ async def add_user_to_request(request: Request, call_next):
     access_token = request.cookies.get("access_token")
     refresh_token = request.cookies.get("refresh_token")
 
-    request.state.user_id = None
-    request.state.roles = None
-
     if access_token:
         try:
             # try normal decode
@@ -66,18 +63,6 @@ async def add_user_to_request(request: Request, call_next):
                 request.state.user_id = None
 
     response = await call_next(request)
+    db.close()
 
-    # set refreshed access token if one was issued
-    # if hasattr(request.state, "new_access_token"):
-    #     response.set_cookie(
-    #         key="access_token",
-    #         value=request.state.new_access_token,
-    #         httponly=True,
-    #         secure=False,  # True in prod
-    #         samesite="lax",
-    #         max_age=15 * 60,
-    #         path="/",
-    #     )
-
-    # db.close()
     return response
