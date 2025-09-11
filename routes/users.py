@@ -138,8 +138,6 @@ def get_current_user(
         )
         user.avatar = presigned_url
 
-        print(presigned_url)
-
     athlete = db.query(Athlete).filter(Athlete.user_id == user.id).first()
 
     plans = []
@@ -223,7 +221,7 @@ def update_current_user(
 
 @router.post("/avatar")
 async def upload_file(
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(None),
     user_id: int = Depends(require_user_id),
     db: Session = Depends(get_db),
 ):
@@ -234,11 +232,18 @@ async def upload_file(
             raise HTTPException(
                 404, detail=ErrorDTO(code=404, message="User not found").model_dump()
             )
+        file_key = None
 
-        file_key = f"users/{uuid4()}_{file.filename}"
+        if file:
+            file_key = f"users/{uuid4()}_{file.filename}"
 
-        # Upload to S3
-        s3_client.upload_fileobj(file.file, BUCKET_NAME, file_key)
+            # Upload to S3
+            s3_client.upload_fileobj(file.file, BUCKET_NAME, file_key)
+        else:
+            # No file → remove avatar
+            if user.avatar:
+                s3_client.delete_object(Bucket=BUCKET_NAME, Key=user.avatar)
+            user.avatar = None
 
         user.avatar = file_key
         db.add(user)
