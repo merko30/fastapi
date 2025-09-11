@@ -12,6 +12,7 @@ from models import (
     AthletePlan,
     Plan,
     CurrentUserRead,
+    UpdateData,
 )
 from dto import ErrorDTO
 from utils.jwt import create_access_token, create_refresh_token, decode_token
@@ -169,3 +170,30 @@ def refresh_access_token(
 
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+
+@router.put("/me")
+def update_current_user(
+    data: UpdateData,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(require_user_id),
+):
+
+    user = db.query(User).where(User.id == user_id).first()
+    coach = db.query(Coach).where(Coach.user_id == user_id).first()
+
+    if not user:
+        raise HTTPException(
+            404, detail=ErrorDTO(code=404, message="User not found").model_dump()
+        )
+
+    for key, value in data.model_dump(exclude_unset=True).items():
+        if key == "description":
+            coach.description = value
+            db.add(coach)
+        else:
+            setattr(user, key, value)
+            db.add(user)
+
+    db.commit()
+    return {"message": "User updated successfully"}

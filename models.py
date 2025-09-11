@@ -245,6 +245,12 @@ class LoginData(BaseModel):
     password: str
 
 
+class UpdateData(BaseModel):
+    name: str
+    username: str
+    description: str
+
+
 class UserRead(BaseModel):
     id: int
     username: str
