@@ -1,7 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, Request
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Response,
+    Request,
+    File,
+    UploadFile,
+)
 from sqlalchemy.orm import Session, selectinload
 from bcrypt import hashpw, gensalt, checkpw
 from database import get_db
+from botocore.exceptions import NoCredentialsError
+from uuid import uuid4
+
+from utils.s3 import s3_client, BUCKET_NAME
 from models import (
     User,
     UserCreate,
@@ -118,6 +130,16 @@ def get_current_user(
             401, detail=ErrorDTO(code=401, message="Unauthorized").model_dump()
         )
 
+    if user.avatar:
+        presigned_url = s3_client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": BUCKET_NAME, "Key": user.avatar},
+            ExpiresIn=3600,  # 1 hour
+        )
+        user.avatar = presigned_url
+
+        print(presigned_url)
+
     athlete = db.query(Athlete).filter(Athlete.user_id == user.id).first()
 
     plans = []
@@ -197,3 +219,36 @@ def update_current_user(
 
     db.commit()
     return {"message": "User updated successfully"}
+
+
+@router.post("/avatar")
+async def upload_file(
+    file: UploadFile = File(...),
+    user_id: int = Depends(require_user_id),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Generate unique filename
+        user = db.query(User).where(User.id == user_id).first()
+        if not user:
+            raise HTTPException(
+                404, detail=ErrorDTO(code=404, message="User not found").model_dump()
+            )
+
+        file_key = f"users/{uuid4()}_{file.filename}"
+
+        # Upload to S3
+        s3_client.upload_fileobj(file.file, BUCKET_NAME, file_key)
+
+        user.avatar = file_key
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        return {"avatar": file_key}
+
+    except NoCredentialsError:
+        raise HTTPException(status_code=401, detail="AWS credentials not found")
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=str(e))

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, selectinload
 from database import get_db
 from dto import ErrorDTO
 from models import Coach
-from utils.middleware import require_user_id
+from utils.middleware import require_user_id, require_coach
 
 router = APIRouter(prefix="/coaches")
 
@@ -20,6 +20,7 @@ def get_coaches(db: Session = Depends(get_db)):
 def get_coaches(
     db: Session = Depends(get_db),
     user_id: int = Depends(require_user_id),
+    is_coach: bool = Depends(require_coach),
 ):
 
     coaches = (
