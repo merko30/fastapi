@@ -94,7 +94,8 @@ def login(data: LoginData, response: Response, db: Session = Depends(get_db)):
         httponly=True,
         secure=False,  # localhost: http
         samesite="lax",  # allow cross-port on localhost
-        max_age=15 * 60,
+        # make shorter
+        max_age=7 * 60 * 60 * 24,
         path="/",
     )
 
