@@ -386,3 +386,16 @@ class PlanRead(BaseModel):
 
 class CurrentUserRead(UserRead):
     plans: List[PlanRead] = []
+
+
+class ConversationRead(BaseModel):
+    id: int
+    user_id: int
+    recipient_id: int
+    created_at: datetime
+    user: UserRead
+    recipient: UserRead
+    messages: List[MessageRead] = []
+
+    class Config:
+        from_attributes = True

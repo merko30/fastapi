@@ -1,16 +1,17 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy import or_
+from typing import List
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
 from utils.middleware import require_user_id
-from models import Conversation, Message
+from models import Conversation, ConversationRead
 from dto import ErrorDTO
 
 router = APIRouter(prefix="/conversations")
 
 
-@router.get("/")
+@router.get("/", response_model=List[ConversationRead])
 def get_conversations(
     db: Session = Depends(get_db), user_id: int = Depends(require_user_id)
 ):
@@ -26,7 +27,7 @@ def get_conversations(
     return conversations
 
 
-@router.get("/{id}")
+@router.get("/{id}", response_model=ConversationRead)
 def get_conversation(id: int, db: Session = Depends(get_db)):
     conversation = (
         db.query(Conversation)
