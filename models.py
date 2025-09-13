@@ -32,6 +32,8 @@ class User(Base):
     email: Mapped[str] = mapped_column(nullable=False, unique=True)
     password: Mapped[str] = mapped_column(nullable=False)
     password_reset_token: Mapped[Optional[str]]
+    verified_at: Mapped[Optional[datetime]]
+    verify_token: Mapped[Optional[str]]
     name: Mapped[Optional[str]]
     avatar: Mapped[Optional[str]]
     roles: Mapped[List[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
@@ -416,3 +418,7 @@ class ResetPasswordData(BaseModel):
 class UpdatePasswordData(BaseModel):
     password: str
     old_password: str
+
+
+class VerifyEmailData(BaseModel):
+    token: str

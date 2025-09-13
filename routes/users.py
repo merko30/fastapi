@@ -11,6 +11,7 @@ from bcrypt import hashpw, gensalt, checkpw
 from database import get_db
 from botocore.exceptions import NoCredentialsError
 from uuid import uuid4
+from datetime import datetime
 
 from utils.s3 import s3_client, BUCKET_NAME
 from models import (
@@ -27,9 +28,10 @@ from models import (
     ForgotPasswordData,
     ResetPasswordData,
     UpdatePasswordData,
+    VerifyEmailData,
 )
 from dto import ErrorDTO
-from utils.email import send_email
+from utils.email import send_email, send_mail_to
 from utils.jwt import create_access_token, create_refresh_token, decode_token
 from utils.middleware import require_user_id
 
@@ -56,6 +58,25 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
     db.add(new_user)
     db.flush()
+
+    new_user.verify_token = create_access_token(new_user, purpose="email_verification")
+
+    try:
+        html = """
+        <p>Hi {},</p>
+        <p>Thank you for registering. Please verify your email by clicking the link below:</p>
+        <a href="http://localhost:3000/verify-email?token={}">Verify Email</a>
+        <p>This link will expire in 15 minutes.</p>
+        <p>If you did not register, please ignore this email.</p>
+        """.format(
+            new_user.name or new_user.email, new_user.verify_token
+        )
+        print(new_user.email)
+        send_email(
+            to=send_mail_to(new_user.email), subject="Verification email", html=html
+        )
+    except Exception as e:
+        print(e)
 
     if is_coach:
         coach = Coach(user_id=new_user.id)
@@ -315,3 +336,25 @@ def update_password(
     db.commit()
 
     return {"message": "Your password has been updated"}
+
+
+@router.post("/verify-email")
+def verify_email(data: VerifyEmailData, db: Session = Depends(get_db)):
+
+    user = db.query(User).where(User.verify_token == data.token).first()
+
+    if not user:
+        raise HTTPException(
+            404,
+            detail=ErrorDTO(
+                code=404, message="Your token is invalid or has expired"
+            ).model_dump(),
+        )
+
+    user.verified_at = datetime.now()
+    user.verify_token = None
+
+    db.add(user)
+    db.commit()
+
+    return {"message": "Email successfully verified"}
