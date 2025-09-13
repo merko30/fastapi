@@ -8,7 +8,7 @@ SECRET = "supersecret"
 ALGORITHM = "HS256"
 
 
-def create_access_token(user: User):
+def create_access_token(user, **overrides):
     now = datetime.now(timezone.utc)
     payload = {
         "sub": str(user.id),
@@ -16,6 +16,10 @@ def create_access_token(user: User):
         "exp": now + timedelta(minutes=15),
         "iat": now,
     }
+
+    # allow overriding defaults
+    payload.update(overrides)
+
     return jwt.encode(payload, SECRET, algorithm="HS256")
 
 

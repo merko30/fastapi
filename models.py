@@ -399,3 +399,13 @@ class ConversationRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ForgotPasswordData(BaseModel):
+    email: str
+
+
+class ResetPasswordData(BaseModel):
+    token: Optional[str]
+    old_password: Optional[str]
+    password: str

@@ -24,9 +24,11 @@ from models import (
     Plan,
     CurrentUserRead,
     UpdateData,
+    ForgotPasswordData,
+    ResetPasswordData,
 )
 from dto import ErrorDTO
-from utils.images import attach_presigned_urls
+from utils.email import send_email
 from utils.jwt import create_access_token, create_refresh_token, decode_token
 from utils.middleware import require_user_id
 
@@ -211,3 +213,64 @@ async def upload_file(
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/forgot-password")
+def initiate_forgot_password_process(
+    data: ForgotPasswordData, db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.email == data.email).first()
+
+    if not user:
+        raise HTTPException(
+            404, detail=ErrorDTO(code=404, message="User not found").model_dump()
+        )
+
+    token = create_access_token(user)
+
+    # todo: update this
+    reset_link = f"http://localhost:3000/reset-password?token={token}"
+
+    email_html = f"""
+    <p>Hi {user.name or user.email},</p>
+    <p>You requested a password reset. Click the link below to reset your password:</p>
+    <a href="{reset_link}">Reset Password</a>
+    <p>This link will expire in 15 minutes.</p>
+    <p>If you did not request this, please ignore this email.</p>
+    """
+
+    response = send_email(
+        to=user.email, subject="Password Reset Request", html=email_html
+    )
+    print(response)
+
+    return {"message": "Password reset email sent"}
+
+
+@router.post("/reset-password")
+def reset_password(data: ResetPasswordData, db: Session = Depends(get_db)):
+    if "token" in data:
+        try:
+            decoded = decode_token(data["token"])
+            user_id = decoded["sub"]
+
+            user = db.query(User).filter(User.id == user_id).first()
+
+            if not user:
+                raise HTTPException(
+                    404,
+                    detail=ErrorDTO(code=404, message="User not found").model_dump(),
+                )
+
+            user.password = data.password
+            db.add(user)
+            db.commit()
+
+            return {"message": "Your password has been reset"}
+
+        except:
+            raise HTTPException(
+                status_code=401, detail="Your password token is invalid or has expired"
+            )
+    else:
+        raise HTTPException(status_code=400, detail="Token is required")
