@@ -228,6 +228,10 @@ def initiate_forgot_password_process(
 
     token = create_access_token(user)
 
+    user.password_reset_token = token
+    db.add(user)
+    db.commit()
+
     # todo: update this
     reset_link = f"http://localhost:3000/reset-password?token={token}"
 
@@ -242,7 +246,6 @@ def initiate_forgot_password_process(
     response = send_email(
         to=user.email, subject="Password Reset Request", html=email_html
     )
-    print(response)
 
     return {"message": "Password reset email sent"}
 
@@ -256,6 +259,12 @@ def reset_password(data: ResetPasswordData, db: Session = Depends(get_db)):
 
             user = db.query(User).filter(User.id == user_id).first()
 
+            if user.password_reset_token != data.token:
+                raise HTTPException(
+                    401,
+                    detail="Your password token is invalid or has expired",
+                )
+
             if not user:
                 raise HTTPException(
                     404,
@@ -264,6 +273,7 @@ def reset_password(data: ResetPasswordData, db: Session = Depends(get_db)):
 
             password = hashpw(data.password.encode("utf-8"), gensalt())
             user.password = password.decode("utf-8")
+            user.password_reset_token = None
             db.add(user)
             db.commit()
 

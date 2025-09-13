@@ -44,7 +44,7 @@ def decode_token(token: str) -> dict[str, Any]:
             detail="Token expired",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    except jwt.JWTError:
+    except jwt.PyJWTError:
         raise HTTPException(
             status_code=401,
             detail="Invalid token",
