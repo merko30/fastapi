@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime, timezone
-from pydantic import constr, BaseModel, EmailStr, computed_field
-from typing import Optional, List
+from pydantic import StringConstraints, BaseModel, EmailStr, computed_field
+from typing import Optional, List, Annotated
 from sqlalchemy import ForeignKey, Enum, DateTime
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, Relationship
@@ -31,6 +31,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(nullable=False)
     email: Mapped[str] = mapped_column(nullable=False, unique=True)
     password: Mapped[str] = mapped_column(nullable=False)
+    password_reset_token: Mapped[Optional[str]]
     name: Mapped[Optional[str]]
     avatar: Mapped[Optional[str]]
     roles: Mapped[List[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
@@ -232,9 +233,9 @@ class WorkoutSet(Base):
 
 
 class UserCreate(BaseModel):
-    username: constr(min_length=3, max_length=50)
+    username: Annotated[str, StringConstraints(min_length=3, max_length=50)]
     email: EmailStr
-    password: constr(min_length=6)
+    password: Annotated[str, StringConstraints(min_length=6)]
     is_coach: Optional[bool]
     name: Optional[str] = None
     avatar: Optional[str] = None
@@ -290,7 +291,7 @@ class WorkoutSetRead(WorkoutSetCreate):
 
 # --- Workout ---
 class WorkoutCreate(BaseModel):
-    title: constr(min_length=3, max_length=100)
+    title: Annotated[str, StringConstraints(min_length=3, max_length=100)]
     description: Optional[str] = None
     type: WorkoutType
     sets: Optional[List[WorkoutSetCreate]] = []
@@ -344,8 +345,8 @@ class WeekRead(WeekCreate):
 
 # --- Plan ---
 class PlanCreate(BaseModel):
-    title: constr(min_length=5, max_length=100)
-    description: constr(min_length=10)
+    title: Annotated[str, StringConstraints(min_length=5, max_length=100)]
+    description: Annotated[str, StringConstraints(min_length=10)]
     level: PlanLevel
     type: PlanType
     features: Optional[List[str]] = []
@@ -357,8 +358,10 @@ class PlanCreate(BaseModel):
 
 
 class PlanUpdate(BaseModel):
-    title: Optional[constr(min_length=5, max_length=100)] = None
-    description: Optional[constr(min_length=10)] = None
+    title: Optional[Annotated[str, StringConstraints(min_length=5, max_length=100)]] = (
+        None
+    )
+    description: Optional[Annotated[str, StringConstraints(min_length=10)]] = None
     level: Optional[PlanLevel] = None
     weeks: Optional[List[WeekCreate]] = None
 
