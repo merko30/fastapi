@@ -26,6 +26,7 @@ from models import (
     UpdateData,
     ForgotPasswordData,
     ResetPasswordData,
+    UpdatePasswordData,
 )
 from dto import ErrorDTO
 from utils.email import send_email
@@ -285,3 +286,32 @@ def reset_password(data: ResetPasswordData, db: Session = Depends(get_db)):
             )
     else:
         raise HTTPException(status_code=400, detail="Token is required")
+
+
+@router.put("/update-password")
+def update_password(
+    data: UpdatePasswordData,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(require_user_id),
+):
+
+    user = db.query(User).filter(User.id == user_id).first()
+
+    password_match = checkpw(
+        data.old_password.encode("utf-8"), user.password.encode("utf-8")
+    )
+
+    if not password_match:
+        raise HTTPException(
+            401,
+            detail=ErrorDTO(
+                code=401, message="Old password is not correct"
+            ).model_dump(),
+        )
+
+    password = hashpw(data.password.encode("utf-8"), gensalt())
+    user.password = password.decode("utf-8")
+    db.add(user)
+    db.commit()
+
+    return {"message": "Your password has been updated"}
