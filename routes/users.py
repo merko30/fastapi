@@ -249,9 +249,9 @@ def initiate_forgot_password_process(
 
 @router.post("/reset-password")
 def reset_password(data: ResetPasswordData, db: Session = Depends(get_db)):
-    if "token" in data:
+    if "token" in data.model_dump():
         try:
-            decoded = decode_token(data["token"])
+            decoded = decode_token(data.token)
             user_id = decoded["sub"]
 
             user = db.query(User).filter(User.id == user_id).first()
@@ -262,13 +262,14 @@ def reset_password(data: ResetPasswordData, db: Session = Depends(get_db)):
                     detail=ErrorDTO(code=404, message="User not found").model_dump(),
                 )
 
-            user.password = data.password
+            password = hashpw(data.password.encode("utf-8"), gensalt())
+            user.password = password.decode("utf-8")
             db.add(user)
             db.commit()
 
             return {"message": "Your password has been reset"}
 
-        except:
+        except HTTPException as e:
             raise HTTPException(
                 status_code=401, detail="Your password token is invalid or has expired"
             )

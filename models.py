@@ -407,5 +407,5 @@ class ForgotPasswordData(BaseModel):
 
 class ResetPasswordData(BaseModel):
     token: Optional[str]
-    old_password: Optional[str]
+    old_password: Optional[str] = None
     password: str
