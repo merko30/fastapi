@@ -1,8 +1,8 @@
 import enum
 from datetime import datetime, timezone
 from pydantic import StringConstraints, BaseModel, EmailStr, computed_field
-from typing import Optional, List, Annotated
-from sqlalchemy import ForeignKey, Enum, DateTime
+from typing import Optional, List, Annotated, Dict, Any
+from sqlalchemy import ForeignKey, Enum, DateTime, JSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, Relationship
 from database import Base
@@ -97,6 +97,7 @@ class Coach(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     description: Mapped[Optional[str]]
+    settings: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, default=dict)
 
     plans = Relationship("Plan", back_populates="coach")
     plan_templates = Relationship("PlanTemplate", back_populates="coach")
@@ -252,6 +253,7 @@ class UpdateData(BaseModel):
     name: str
     username: str
     description: str
+    settings: Optional[Dict[str, Any]] = {}
 
 
 class UserRead(BaseModel):
@@ -374,6 +376,7 @@ class PlanUpdate(BaseModel):
 class CoachRead(BaseModel):
     id: int
     description: Optional[str] = None
+    settings: Dict[str, Any]
     user: UserRead
 
 

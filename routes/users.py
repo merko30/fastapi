@@ -35,6 +35,8 @@ from utils.email import send_email, send_mail_to
 from utils.jwt import create_access_token, create_refresh_token, decode_token
 from utils.middleware import require_user_id
 
+COACH_FIELDS = ["description", "settings"]
+
 router = APIRouter(prefix="/auth")
 
 
@@ -186,8 +188,8 @@ def update_current_user(
         )
 
     for key, value in data.model_dump(exclude_unset=True).items():
-        if key == "description":
-            coach.description = value
+        if key in COACH_FIELDS:
+            setattr(coach, key, data.model_dump()[key])
             db.add(coach)
         else:
             setattr(user, key, value)
