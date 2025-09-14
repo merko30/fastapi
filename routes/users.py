@@ -188,12 +188,8 @@ def update_current_user(
         )
 
     for key, value in data.model_dump(exclude_unset=True).items():
-        if key in COACH_FIELDS:
-            setattr(coach, key, data.model_dump()[key])
-            db.add(coach)
-        else:
-            setattr(user, key, value)
-            db.add(user)
+        setattr(user, key, value)
+        db.add(user)
 
     db.commit()
     return {"message": "User updated successfully"}

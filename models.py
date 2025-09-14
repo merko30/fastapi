@@ -252,6 +252,9 @@ class LoginData(BaseModel):
 class UpdateData(BaseModel):
     name: str
     username: str
+
+
+class CoachUpdateData(BaseModel):
     description: str
     settings: Optional[Dict[str, Any]] = {}
 
