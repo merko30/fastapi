@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func
 from datetime import datetime
+import json
+
 from database import get_db
 from models import (
     Plan,
@@ -112,6 +114,7 @@ def get_plan_preview(id: int, db: Session = Depends(get_db)):
             "description": plan.description,
             "level": plan.level,
             "type": plan.type,
+            "features": plan.features,
             "coach": CoachRead.model_validate(plan.coach),
             "first_week": first_week,
             "weeks_count": weeks_count,

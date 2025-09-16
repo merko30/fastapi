@@ -407,7 +407,7 @@ class PlanPreviewRead(BaseModel):
     description: str
     level: PlanLevel
     type: PlanType
-    features: List[str]
+    features: Optional[List[str]] = []
     coach: CoachRead
     first_week: Optional[WeekRead] = None
     weeks_count: int
