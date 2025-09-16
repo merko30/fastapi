@@ -125,7 +125,9 @@ class PlanTemplate(Base):
     title: Mapped[str]
     description: Mapped[str]
     level: Mapped[PlanLevel] = mapped_column(Enum(PlanLevel, name="level"))
-    features: Mapped[Optional[str]]
+    features: Mapped[List[str]] = mapped_column(
+        JSONB, nullable=False, server_default="[]"
+    )
     price: Mapped[Optional[float]]
     type: Mapped[PlanType] = mapped_column(Enum(PlanType, name="type"))
 
@@ -405,6 +407,7 @@ class PlanPreviewRead(BaseModel):
     description: str
     level: PlanLevel
     type: PlanType
+    features: List[str]
     coach: CoachRead
     first_week: Optional[WeekRead] = None
     weeks_count: int
