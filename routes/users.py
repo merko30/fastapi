@@ -5,6 +5,7 @@ from fastapi import (
     Response,
     File,
     UploadFile,
+    Request,
 )
 from sqlalchemy.orm import Session, selectinload
 from bcrypt import hashpw, gensalt, checkpw
@@ -91,6 +92,45 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
 
     return new_user
+
+
+# ---- REFRESH TOKEN ENDPOINT ----
+@router.post("/refresh")
+def refresh_token_endpoint(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(
+            401, detail=ErrorDTO(code=401, message="No refresh token").model_dump()
+        )
+    try:
+        payload = decode_token(refresh_token)
+        user_id = payload["sub"]
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(
+                404, detail=ErrorDTO(code=404, message="User not found").model_dump()
+            )
+        token = create_access_token(user)
+        response.set_cookie(
+            key="access_token",
+            value=token,
+            httponly=True,
+            secure=False,  # localhost: http
+            samesite="lax",
+            max_age=7 * 60 * 60 * 24,
+            path="/",
+        )
+        return {"access_token": token}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            401, detail=ErrorDTO(code=401, message="Invalid refresh token").model_dump()
+        )
 
 
 @router.post("/login", response_model=UserRead)
