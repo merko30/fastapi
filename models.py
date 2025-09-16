@@ -382,14 +382,32 @@ class CoachRead(BaseModel):
     settings: Dict[str, Any]
     user: UserRead
 
+    class Config:
+        from_attributes = True
+
 
 class PlanRead(BaseModel):
     id: int
     title: str
     description: str
     level: PlanLevel
+    type: PlanType
     coach: CoachRead
     weeks: List[WeekRead] = []
+
+    class Config:
+        from_attributes = True
+
+
+class PlanPreviewRead(BaseModel):
+    id: int
+    title: str
+    description: str
+    level: PlanLevel
+    type: PlanType
+    coach: CoachRead
+    first_week: Optional[WeekRead] = None
+    weeks_count: int
 
     class Config:
         from_attributes = True

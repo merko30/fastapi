@@ -1,6 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import func
 from datetime import datetime
 from database import get_db
 from models import (
@@ -15,6 +16,8 @@ from models import (
     WorkoutSet,
     Day,
     Coach,
+    PlanPreviewRead,
+    CoachRead,
 )
 from utils.middleware import require_user_id
 from dto import ErrorDTO
@@ -85,27 +88,35 @@ def create_plan(
             400, detail=ErrorDTO(code=400, message="You are not a coach").model_dump()
         )
 
-    print(data)
-
     plan = generate_plan(db, data, coach.id, model_class=PlanTemplate)
     return plan
 
 
-@router.get("/{id}", response_model=PlanRead)
-def get_plan(id: int, db: Session = Depends(get_db)):
-    plan = (
-        db.query(PlanTemplate)
-        .filter(Plan.id == id)
-        .options(selectinload(PlanTemplate.coach))
-        .first()
+@router.get("/{id}", response_model=PlanPreviewRead)
+def get_plan_preview(id: int, db: Session = Depends(get_db)):
+    # fetch plan
+    plan = db.query(PlanTemplate).get(id)
+
+    # count weeks separately
+    weeks_count = db.query(func.count(Week.id)).filter(Week.template_id == id).scalar()
+
+    # fetch first week
+    first_week = (
+        db.query(Week).filter(Week.template_id == id).order_by(Week.order.asc()).first()
     )
 
-    if not plan:
-        raise HTTPException(
-            404, detail=ErrorDTO(code=404, message="Plan not found").model_dump()
-        )
-
-    return plan
+    return PlanPreviewRead.model_validate(
+        {
+            "id": plan.id,
+            "title": plan.title,
+            "description": plan.description,
+            "level": plan.level,
+            "type": plan.type,
+            "coach": CoachRead.model_validate(plan.coach),
+            "first_week": first_week,
+            "weeks_count": weeks_count,
+        }
+    )
 
 
 @router.put("/{id}", response_model=PlanRead)
@@ -144,7 +155,7 @@ def assign_plan_to_athlete(
 
     # create athlete plan entry
     athlete_plan = AthletePlan(
-        athlete_id=athlete_id, plan_id=plan_id, started_at=datetime.utcnow()
+        athlete_id=athlete_id, plan_id=plan_template_id, started_at=datetime.utcnow()
     )
     db.add(athlete_plan)
     db.flush()
