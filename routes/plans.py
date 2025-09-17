@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import func
+from sqlalchemy import func, event, Connection, text
 from datetime import datetime
 import json
 
@@ -21,6 +21,8 @@ from models import (
     Athlete,
     PlanPreviewRead,
     CoachRead,
+    Conversation,
+    Message,
 )
 from utils.middleware import require_user_id
 from dto import ErrorDTO
@@ -188,3 +190,86 @@ def assign_plan_to_athlete(
     db.commit()
     db.refresh(athlete_plan)
     return {"message": "Plan ordered successfully"}
+
+
+@event.listens_for(AthletePlan, "after_insert")
+def receive_after_insert(mapper, connection: Connection, target):
+    sql = text(
+        """
+        SELECT
+            ap.id AS athlete_plan_id,
+            ap.athlete_id,
+            ap.plan_id,
+            ap.started_at,
+            
+            p.id AS plan_id,
+            p.title AS plan_title,
+            
+            c.id AS coach_id,
+            c.settings AS settings,
+            
+            u.id AS user_id,
+            u.username AS username,
+            u.email AS email,
+            u.name AS name,
+
+            u2.id AS athlete_user_id,
+            u2.name AS athlete_name,
+            u2.username AS athlete_username
+
+        FROM athlete_plans ap
+        JOIN plans p ON ap.plan_id = p.id
+        JOIN coaches c ON p.coach_id = c.id
+        JOIN athletes a ON ap.athlete_id = a.id
+        JOIN users u2 ON a.user_id = u2.id
+        JOIN users u ON c.user_id = u.id
+        WHERE ap.id = :id
+        """
+    )
+
+    ap = connection.execute(sql, {"id": target.id})
+
+    row = ap.first()
+    dict = row._asdict()
+
+    settings = dict["settings"]
+
+    if settings and settings["send_welcome_message"] and settings["welcome_message"]:
+        athlete_user_id = dict["athlete_user_id"]
+        athlete_name = dict["athlete_name"]
+        athlete_username = dict["athlete_username"]
+        coach_user_id = dict["user_id"]
+
+        message = settings["welcome_message"].replace(
+            "{athlete_name}", athlete_name if athlete_name else athlete_username
+        )
+
+        conversation_insert_result = connection.execute(
+            text(
+                """
+                    INSERT INTO conversations (user_id, recipient_id, created_at) VALUES (:user_id, :recipient_id, :created_at) RETURNING id
+                """
+            ),
+            {
+                "user_id": coach_user_id,
+                "recipient_id": athlete_user_id,
+                "created_at": datetime.utcnow(),
+            },
+        )
+
+        conversation_id = conversation_insert_result.scalar_one()
+
+        connection.execute(
+            text(
+                """
+                INSERT INTO messages (conversation_id, sender_id, content, created_at)
+                VALUES (:conversation_id, :sender_id, :content, :created_at)
+            """
+            ),
+            {
+                "conversation_id": conversation_id,
+                "sender_id": coach_user_id,
+                "content": message,
+                "created_at": datetime.utcnow(),
+            },
+        )

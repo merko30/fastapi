@@ -5,8 +5,6 @@ import os
 import json
 from utils.websocket.manager import manager
 from utils.websocket.handlers import handler
-from database import get_db
-from sqlalchemy.orm import Session
 
 from utils.middleware import add_user_to_request
 
@@ -55,3 +53,8 @@ app.include_router(plans_router)
 app.include_router(auth_router)
 app.include_router(coaches_router)
 app.include_router(conversations_router)
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
