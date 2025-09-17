@@ -209,8 +209,9 @@ def get_current_user(
             .options(selectinload(AthletePlan.plan).selectinload(Plan.weeks))
             .all()
         )
+        plans = athlete_plans
 
-    return {**user.__dict__, "plans": athlete_plans}
+    return {**user.__dict__, "plans": plans}
 
 
 @router.put("/me")

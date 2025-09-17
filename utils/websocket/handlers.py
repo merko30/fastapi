@@ -32,7 +32,6 @@ async def handle_message(websocket: WebSocket, data: dict):
 @handler.register("typing")
 async def handle_typing(websocket: WebSocket, data: dict):
     # Example for typing notifications
-    print(data)
     await manager.broadcast(
         {
             "type": "typing",
@@ -44,7 +43,6 @@ async def handle_typing(websocket: WebSocket, data: dict):
 
 @handler.register("not-typing")
 async def handle_typing(websocket: WebSocket, data: dict):
-    print(data)
     await manager.broadcast(
         {
             "type": "not-typing",
