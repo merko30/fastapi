@@ -18,6 +18,7 @@ from models import (
     WorkoutSet,
     Day,
     Coach,
+    Athlete,
     PlanPreviewRead,
     CoachRead,
 )
@@ -30,8 +31,14 @@ router = APIRouter(prefix="/plans")
 def generate_plan(
     db: Session, data: PlanCreate, coach_id: int, model_class=PlanTemplate
 ) -> Plan:
-    plan_dict = data.model_dump(exclude={"weeks"})
+    is_template = model_class == PlanTemplate
+    fields_to_exclude = (
+        {"id", "coach", "features", "price", "weeks"} if not is_template else {"weeks"}
+    )
+    plan_dict = data.model_dump(exclude=fields_to_exclude)
     plan_dict["level"] = plan_dict["level"].value
+    plan_dict["type"] = plan_dict["type"].value
+    plan_dict["template_id"] = None if is_template else data.id
     plan = model_class(**plan_dict, coach_id=coach_id)
     db.add(plan)
     db.flush()  # Ensure plan.id is available
@@ -114,6 +121,7 @@ def get_plan_preview(id: int, db: Session = Depends(get_db)):
             "description": plan.description,
             "level": plan.level,
             "type": plan.type,
+            "price": plan.price,
             "features": plan.features,
             "coach": CoachRead.model_validate(plan.coach),
             "first_week": first_week,
@@ -145,57 +153,38 @@ def update_plan(
     return plan_in_db
 
 
-@router.post("/{athlete_id}/{plan_template_id}")
+@router.post("/{plan_template_id}/order")
 def assign_plan_to_athlete(
-    plan_template_id: int, athlete_id: int, db: Session = Depends(get_db)
+    plan_template_id: int,
+    user_id: int = Depends(require_user_id),
+    db: Session = Depends(get_db),
 ):
     # fetch original plan
-    original_plan = (
-        db.query(PlanTemplate).filter(PlanTemplate.id == plan_template_id).first()
+    plan_template = (
+        db.query(PlanTemplate).where(PlanTemplate.id == plan_template_id).first()
     )
-    if not original_plan:
+    if not plan_template:
         raise HTTPException(404, "Plan not found")
 
-    # create athlete plan entry
-    athlete_plan = AthletePlan(
-        athlete_id=athlete_id, plan_id=plan_template_id, started_at=datetime.utcnow()
+    athlete = db.query(Athlete).where(Athlete.user_id == user_id).first()
+
+    if not athlete:
+        raise HTTPException(400, "You are not an athlete")
+
+    new_plan = generate_plan(
+        db,
+        PlanCreate.model_validate(plan_template),
+        plan_template.coach_id,
+        model_class=Plan,
     )
+
+    athlete_plan = AthletePlan(
+        athlete_id=athlete.id,
+        plan_id=new_plan.id,
+        started_at=datetime.utcnow(),
+    )
+
     db.add(athlete_plan)
-    db.flush()
-
-    # deep copy weeks
-    for week in original_plan.weeks:
-        new_week = Week(plan_id=athlete_plan.id)
-        db.add(new_week)
-        db.flush()
-
-        # copy days
-        for day in week.days:
-            new_day = Day(week_id=new_week.id, day_of_week=day.day_of_week)
-            db.add(new_day)
-            db.flush()
-
-            # copy workouts
-            for workout in day.workouts:
-                new_workout = Workout(
-                    day_id=new_day.id,
-                    title=workout.title,
-                    description=workout.description,
-                    type=workout.type,
-                )
-                db.add(new_workout)
-                db.flush()
-
-                # copy sets
-                for s in workout.sets:
-                    new_set = WorkoutSet(
-                        workout_id=new_workout.id,
-                        active_value=s.active_value,
-                        active_measure_type=s.active_measure_type,
-                        recovery_value=s.recovery_value,
-                        recovery_measure_type=s.recovery_measure_type,
-                    )
-                    db.add(new_set)
-
     db.commit()
-    return athlete_plan
+    db.refresh(athlete_plan)
+    return {"message": "Plan ordered successfully"}

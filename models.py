@@ -354,6 +354,7 @@ class WeekRead(WeekCreate):
 
 # --- Plan ---
 class PlanCreate(BaseModel):
+    id: Optional[int] = None
     title: Annotated[str, StringConstraints(min_length=5, max_length=100)]
     description: Annotated[str, StringConstraints(min_length=10)]
     level: PlanLevel
@@ -397,6 +398,10 @@ class PlanRead(BaseModel):
     coach: CoachRead
     weeks: List[WeekRead] = []
 
+    @computed_field
+    def weeks_count(self) -> int:
+        return len(self.weeks)
+
     class Config:
         from_attributes = True
 
@@ -407,6 +412,7 @@ class PlanPreviewRead(BaseModel):
     description: str
     level: PlanLevel
     type: PlanType
+    price: int
     features: Optional[List[str]] = []
     coach: CoachRead
     first_week: Optional[WeekRead] = None
@@ -416,8 +422,17 @@ class PlanPreviewRead(BaseModel):
         from_attributes = True
 
 
+class AthletePlanRead(BaseModel):
+    id: int
+    started_at: datetime
+    plan: PlanRead
+
+    class Config:
+        from_attributes = True
+
+
 class CurrentUserRead(UserRead):
-    plans: List[PlanRead] = []
+    plans: List[AthletePlanRead] = []
 
 
 class ConversationRead(BaseModel):

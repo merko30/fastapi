@@ -207,9 +207,8 @@ def get_current_user(
             .options(selectinload(AthletePlan.plan).selectinload(Plan.weeks))
             .all()
         )
-        plans = [ap.plan for ap in athlete_plans]
 
-    return {**user.__dict__, "plans": plans}
+    return {**user.__dict__, "plans": athlete_plans}
 
 
 @router.put("/me")
