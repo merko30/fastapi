@@ -7,25 +7,19 @@ from fastapi import (
     UploadFile,
     Request,
 )
-from sqlalchemy import event
 from sqlalchemy.orm import Session, selectinload
 from bcrypt import hashpw, gensalt, checkpw
 from database import get_db
 from botocore.exceptions import NoCredentialsError
 from uuid import uuid4
 from datetime import datetime
-import json
 
 from utils.s3 import s3_client, BUCKET_NAME
-from models import (
-    User,
+from models.index import User, Coach, Athlete, AthletePlan, Plan
+from models.dtos import (
     UserCreate,
     LoginData,
-    Coach,
     UserRead,
-    Athlete,
-    AthletePlan,
-    Plan,
     CurrentUserRead,
     UpdateData,
     ForgotPasswordData,

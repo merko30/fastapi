@@ -4,7 +4,8 @@ from fastapi import WebSocket
 from .index import WebSocketHandler
 from .manager import manager
 from database import get_db
-from models import Message, MessageRead
+from models.index import Message
+from models.dtos import MessageRead
 
 
 db: Session = next(get_db())

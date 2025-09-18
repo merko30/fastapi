@@ -3,15 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, event, Connection, text
 from datetime import datetime
-import json
 
 from database import get_db
-from models import (
+from models.index import (
     Plan,
     PlanTemplate,
-    PlanCreate,
-    PlanUpdate,
-    PlanRead,
     AthletePlan,
     Week,
     Workout,
@@ -19,10 +15,13 @@ from models import (
     Day,
     Coach,
     Athlete,
+)
+from models.dtos import (
+    PlanCreate,
+    PlanUpdate,
+    PlanRead,
     PlanPreviewRead,
     CoachRead,
-    Conversation,
-    Message,
 )
 from utils.middleware import require_user_id
 from dto import ErrorDTO

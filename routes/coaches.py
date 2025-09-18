@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
 from dto import ErrorDTO
-from models import Coach, CoachUpdateData
+from models.index import Coach
+from models.dtos import CoachUpdateData
 from utils.middleware import require_user_id, require_coach
 
 router = APIRouter(prefix="/coaches")

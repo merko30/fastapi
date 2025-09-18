@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
 from utils.middleware import require_user_id
-from models import Conversation, ConversationRead
+from models.index import Conversation
+from models.dtos import ConversationRead
 from dto import ErrorDTO
 
 router = APIRouter(prefix="/conversations")
