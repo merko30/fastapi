@@ -271,10 +271,12 @@ class UserRead(BaseModel):
 
     @computed_field
     @property
-    def avatar_url(self) -> str:
+    def avatar_url(self) -> str | None:
         from utils.images import get_presigned_url
 
-        return get_presigned_url(self.avatar)
+        if self.avatar:
+            return get_presigned_url(self.avatar)
+        return None
 
     class Config:
         from_attributes = True
