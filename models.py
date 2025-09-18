@@ -233,6 +233,7 @@ class WorkoutSet(Base):
             default=WorkoutSetMeasureType.TIME,
         )
     )
+    repetitions: Mapped[Optional[int]] = mapped_column(nullable=True, default=1)
 
     workout = Relationship("Workout", back_populates="sets")
 
@@ -288,6 +289,7 @@ class WorkoutSetCreate(BaseModel):
     active_measure_type: WorkoutSetMeasureType
     recovery_value: Optional[int] = None
     recovery_measure_type: Optional[WorkoutSetMeasureType] = None
+    repetitions: Optional[int] = None
     name: str
     description: Optional[str]
     order: int
@@ -298,6 +300,14 @@ class WorkoutSetCreate(BaseModel):
 
 class WorkoutSetRead(WorkoutSetCreate):
     id: int
+    active_value: int
+    active_measure_type: WorkoutSetMeasureType
+    recovery_value: Optional[int] = None
+    recovery_measure_type: Optional[WorkoutSetMeasureType] = None
+    name: str
+    description: Optional[str] = None
+    order: int
+    repetitions: Optional[int] = None
 
 
 # --- Workout ---
