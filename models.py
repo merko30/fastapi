@@ -192,10 +192,13 @@ class WorkoutType(enum.Enum):
     HYBRID = "HYBRID"
 
 
-class WorkoutSetMeasureType(enum.Enum):
+class WorkoutStepType(enum.Enum):
     DISTANCE = "DISTANCE"
     TIME = "TIME"
     REPS = "REPS"
+    REST = "REST"
+    WARM_UP = "WARM UP"
+    COOL_DOWN = "COOL DOWN"
 
 
 class Workout(Base):
@@ -209,33 +212,24 @@ class Workout(Base):
     type: Mapped[WorkoutType] = mapped_column(Enum(WorkoutType, name="type"))
 
     day = Relationship("Day", back_populates="workouts")
-    sets = Relationship("WorkoutSet", back_populates="workout")
+    steps = Relationship("WorkoutStep", back_populates="workout")
 
 
-class WorkoutSet(Base):
-    __tablename__ = "workout_sets"
+class WorkoutStep(Base):
+    __tablename__ = "workout_steps"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     workout_id: Mapped[int] = mapped_column(ForeignKey("workouts.id"))
     name: Mapped[str]
     description: Mapped[Optional[str]]
     order: Mapped[int]
-    active_value: Mapped[int]
-    active_measure_type: Mapped[WorkoutSetMeasureType] = mapped_column(
-        Enum(WorkoutSetMeasureType, name="workout_set_measure_type")
-    )
-    recovery_value: Mapped[int] = mapped_column(nullable=True, default=0)
-    recovery_measure_type: Mapped[WorkoutSetMeasureType] = mapped_column(
-        Enum(
-            WorkoutSetMeasureType,
-            name="workout_set_measure_type",
-            nullable=True,
-            default=WorkoutSetMeasureType.TIME,
-        )
+    value: Mapped[int]
+    type: Mapped[WorkoutStepType] = mapped_column(
+        Enum(WorkoutStepType, name="workout_step_type")
     )
     repetitions: Mapped[Optional[int]] = mapped_column(nullable=True, default=1)
 
-    workout = Relationship("Workout", back_populates="sets")
+    workout = Relationship("Workout", back_populates="steps")
 
 
 class UserCreate(BaseModel):
@@ -283,12 +277,10 @@ class UserRead(BaseModel):
         from_attributes = True
 
 
-# --- WorkoutSet ---
-class WorkoutSetCreate(BaseModel):
-    active_value: int
-    active_measure_type: WorkoutSetMeasureType
-    recovery_value: Optional[int] = None
-    recovery_measure_type: Optional[WorkoutSetMeasureType] = None
+# --- WorkoutStep ---
+class WorkoutStepCreate(BaseModel):
+    value: int
+    type: WorkoutStepType
     repetitions: Optional[int] = None
     name: str
     description: Optional[str]
@@ -298,12 +290,10 @@ class WorkoutSetCreate(BaseModel):
         from_attributes = True
 
 
-class WorkoutSetRead(WorkoutSetCreate):
+class WorkoutStepRead(WorkoutStepCreate):
     id: int
-    active_value: int
-    active_measure_type: WorkoutSetMeasureType
-    recovery_value: Optional[int] = None
-    recovery_measure_type: Optional[WorkoutSetMeasureType] = None
+    value: int
+    type: WorkoutStepType
     name: str
     description: Optional[str] = None
     order: int
@@ -315,7 +305,7 @@ class WorkoutCreate(BaseModel):
     title: Annotated[str, StringConstraints(min_length=3, max_length=100)]
     description: Optional[str] = None
     type: WorkoutType
-    sets: Optional[List[WorkoutSetCreate]] = []
+    steps: Optional[List[WorkoutStepCreate]] = []
     order: int
 
     class Config:
@@ -324,7 +314,7 @@ class WorkoutCreate(BaseModel):
 
 class WorkoutRead(WorkoutCreate):
     id: int
-    sets: List[WorkoutSetRead] = []
+    steps: List[WorkoutStepRead] = []
 
     class Config:
         from_attributes = True

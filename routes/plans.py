@@ -15,7 +15,7 @@ from models import (
     AthletePlan,
     Week,
     Workout,
-    WorkoutSet,
+    WorkoutStep,
     Day,
     Coach,
     Athlete,
@@ -61,16 +61,16 @@ def generate_plan(
 
             for workout_data in getattr(day_data, "workouts", []):
                 workout = Workout(
-                    **workout_data.model_dump(exclude={"sets"}), day_id=day.id
+                    **workout_data.model_dump(exclude={"steps"}), day_id=day.id
                 )
                 db.add(workout)
                 db.flush()
 
-                for set_data in getattr(workout_data, "sets", []):
-                    workout_set = WorkoutSet(
-                        **set_data.model_dump(), workout_id=workout.id
+                for step_data in getattr(workout_data, "steps", []):
+                    workout_step = WorkoutStep(
+                        **step_data.model_dump(), workout_id=workout.id
                     )
-                    db.add(workout_set)
+                    db.add(workout_step)
 
     db.commit()
     db.refresh(plan)
