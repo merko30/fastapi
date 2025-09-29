@@ -69,6 +69,7 @@ class WorkoutStepCreate(BaseModel):
     name: str
     description: Optional[str]
     order: int
+    step_id: Optional[int] = None  # For nested steps
 
     class Config:
         from_attributes = True
@@ -82,6 +83,8 @@ class WorkoutStepRead(WorkoutStepCreate):
     description: Optional[str] = None
     order: int
     repetitions: Optional[int] = None
+    steps: List["WorkoutStepRead"] = []
+    step_id: Optional[int] = None  # For nested steps
 
 
 # --- Workout ---

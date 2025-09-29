@@ -189,6 +189,16 @@ class WorkoutStep(Base):
     type: Mapped[WorkoutStepType] = mapped_column(
         Enum(WorkoutStepType, name="workout_step_type")
     )
+    step_id = mapped_column(ForeignKey("workout_steps.id"), nullable=True)
     repetitions: Mapped[Optional[int]] = mapped_column(nullable=True, default=1)
 
+    parent: Mapped[Optional["WorkoutStep"]] = Relationship(
+        "WorkoutStep",
+        remote_side=[id],  # points to the "other side"
+        back_populates="steps",
+    )
+    # if repetitive
+    steps: Mapped[List["WorkoutStep"]] = Relationship(
+        "WorkoutStep", back_populates="parent", cascade="all, delete-orphan"
+    )
     workout = Relationship("Workout", back_populates="steps")
